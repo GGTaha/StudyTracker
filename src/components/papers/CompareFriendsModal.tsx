@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, Users, Loader2, ChevronRight, UsersRound } from 'lucide-react'
+import { X, Users, Loader2, ChevronLeft } from 'lucide-react'
 import { useFriendsStore } from '../../stores/friendsStore'
 import type { Friend } from '../../stores/friendsStore'
 import { usePapersStore } from '../../stores/papersStoreNew'
@@ -10,7 +10,6 @@ interface CompareFriendsModalProps {
   onClose: () => void
   config: SubjectPaperConfig
   friends: Friend[]
-  initialView?: 'friends' | 'all'
 }
 
 interface FriendComparison {
@@ -20,25 +19,41 @@ interface FriendComparison {
   entries: PaperEntry[]
 }
 
-export function CompareFriendsModal({ isOpen, onClose, config, friends, initialView = 'friends' }: CompareFriendsModalProps) {
+const AVATAR_COLORS = [
+  'bg-purple-500',
+  'bg-rose-500',
+  'bg-sky-500',
+  'bg-emerald-500',
+  'bg-amber-500',
+  'bg-pink-500',
+  'bg-indigo-500',
+  'bg-teal-500',
+]
+
+function getAvatarColor(name: string): string {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
+}
+
+export function CompareFriendsModal({ isOpen, onClose, config, friends }: CompareFriendsModalProps) {
   const { getFriendPaperConfigs, getFriendPaperEntries } = useFriendsStore()
   const { entries: myEntries } = usePapersStore()
   
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null)
   const [friendComparisons, setFriendComparisons] = useState<FriendComparison[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [view, setView] = useState<'friends' | 'comparison' | 'all'>(initialView)
+  const [view, setView] = useState<'friends' | 'comparison'>('friends')
   const [friendEntries, setFriendEntries] = useState<PaperEntry[]>([])
-  const [allFriendsEntries, setAllFriendsEntries] = useState<Map<string, PaperEntry[]>>(new Map())
-  const [hasLoadedAll, setHasLoadedAll] = useState(false)
   
   useEffect(() => {
     if (isOpen) {
-      setView(initialView)
-      setHasLoadedAll(false)
+      setView('friends')
       loadFriendComparisons()
     }
-  }, [isOpen, config.id, initialView])
+  }, [isOpen, config.id])
   
   const loadFriendComparisons = async () => {
     setIsLoading(true)
@@ -59,28 +74,6 @@ export function CompareFriendsModal({ isOpen, onClose, config, friends, initialV
     }
     
     setFriendComparisons(comparisons)
-    
-    // If initialView is 'all', automatically load all friends' entries
-    if (initialView === 'all' && !hasLoadedAll) {
-      const entriesMap = new Map<string, PaperEntry[]>()
-      
-      for (const comparison of comparisons) {
-        if (!comparison.hasMatchingSubject) continue
-        
-        const matchingConfig = comparison.configs.find(c => 
-          c.subject_name.toLowerCase() === config.subject_name.toLowerCase()
-        )
-        
-        if (matchingConfig) {
-          const entries = await getFriendPaperEntries(comparison.friend.id, matchingConfig.subject_id)
-          entriesMap.set(comparison.friend.id, entries)
-        }
-      }
-      
-      setAllFriendsEntries(entriesMap)
-      setHasLoadedAll(true)
-    }
-    
     setIsLoading(false)
   }
   
@@ -91,7 +84,6 @@ export function CompareFriendsModal({ isOpen, onClose, config, friends, initialV
     setSelectedFriendId(friendId)
     setIsLoading(true)
     
-    // Find their matching config
     const matchingConfig = comparison.configs.find(c => 
       c.subject_name.toLowerCase() === config.subject_name.toLowerCase()
     )
@@ -107,38 +99,13 @@ export function CompareFriendsModal({ isOpen, onClose, config, friends, initialV
     setIsLoading(false)
   }
   
-  const selectAllFriends = async () => {
-    setIsLoading(true)
-    const entriesMap = new Map<string, PaperEntry[]>()
-    
-    // Get entries for all friends with matching subjects
-    for (const comparison of friendComparisons) {
-      if (!comparison.hasMatchingSubject) continue
-      
-      const matchingConfig = comparison.configs.find(c => 
-        c.subject_name.toLowerCase() === config.subject_name.toLowerCase()
-      )
-      
-      if (matchingConfig) {
-        const entries = await getFriendPaperEntries(comparison.friend.id, matchingConfig.subject_id)
-        entriesMap.set(comparison.friend.id, entries)
-      }
-    }
-    
-    setAllFriendsEntries(entriesMap)
-    setView('all')
-    setIsLoading(false)
-  }
-  
   const selectedFriend = friends.find(f => f.id === selectedFriendId)
   const mySubjectEntries = myEntries.filter(e => e.subject_id === config.subject_id)
-  const comparableFriends = friendComparisons.filter(c => c.hasMatchingSubject)
   
   // Build comparison rows
   const getComparisonRows = () => {
     const sessionsMap = new Map<string, { year: number; session: SessionType; variant: number }>()
     
-    // Extract variant from paper_code (e.g., "12" -> variant 2)
     const getVariant = (paperCode: string): number => {
       if (paperCode.length >= 2) {
         return parseInt(paperCode[1]) || 1
@@ -146,7 +113,6 @@ export function CompareFriendsModal({ isOpen, onClose, config, friends, initialV
       return 1
     }
     
-    // Collect all sessions from my entries (including variants)
     for (const entry of mySubjectEntries) {
       const variant = getVariant(entry.paper_code)
       const key = `${entry.year}-${entry.session}-V${variant}`
@@ -155,7 +121,6 @@ export function CompareFriendsModal({ isOpen, onClose, config, friends, initialV
       }
     }
     
-    // Collect all sessions from friend entries (including variants)
     for (const entry of friendEntries) {
       const variant = getVariant(entry.paper_code)
       const key = `${entry.year}-${entry.session}-V${variant}`
@@ -164,7 +129,6 @@ export function CompareFriendsModal({ isOpen, onClose, config, friends, initialV
       }
     }
     
-    // Sort sessions (newest first, then by variant)
     const sessions = Array.from(sessionsMap.values()).sort((a, b) => {
       if (a.year !== b.year) return b.year - a.year
       const order: Record<SessionType, number> = { 'Oct/Nov': 0, 'May/Jun': 1, 'Feb/Mar': 2 }
@@ -183,7 +147,7 @@ export function CompareFriendsModal({ isOpen, onClose, config, friends, initialV
       for (const entry of mySubjectEntries) {
         const entryVariant = getVariant(entry.paper_code)
         if (entry.year === year && entry.session === session && entryVariant === variant) {
-          const paperNum = entry.paper_code[0] // Get paper number (first digit)
+          const paperNum = entry.paper_code[0]
           myPapers.set(paperNum, { marks: entry.marks, maxMarks: entry.max_marks })
         }
       }
@@ -191,7 +155,7 @@ export function CompareFriendsModal({ isOpen, onClose, config, friends, initialV
       for (const entry of friendEntries) {
         const entryVariant = getVariant(entry.paper_code)
         if (entry.year === year && entry.session === session && entryVariant === variant) {
-          const paperNum = entry.paper_code[0] // Get paper number (first digit)
+          const paperNum = entry.paper_code[0]
           friendPapers.set(paperNum, { marks: entry.marks, maxMarks: entry.max_marks })
         }
       }
@@ -200,379 +164,121 @@ export function CompareFriendsModal({ isOpen, onClose, config, friends, initialV
     })
   }
   
-  // Build comparison rows for all friends
-  const getAllFriendsComparisonRows = () => {
-    const sessionsMap = new Map<string, { year: number; session: SessionType; variant: number }>()
-    
-    const getVariant = (paperCode: string): number => {
-      if (paperCode.length >= 2) {
-        return parseInt(paperCode[1]) || 1
-      }
-      return 1
-    }
-    
-    // Collect all sessions from my entries
-    for (const entry of mySubjectEntries) {
-      const variant = getVariant(entry.paper_code)
-      const key = `${entry.year}-${entry.session}-V${variant}`
-      if (!sessionsMap.has(key)) {
-        sessionsMap.set(key, { year: entry.year, session: entry.session, variant })
-      }
-    }
-    
-    // Collect all sessions from all friends' entries
-    for (const [, entries] of allFriendsEntries) {
-      for (const entry of entries) {
-        const variant = getVariant(entry.paper_code)
-        const key = `${entry.year}-${entry.session}-V${variant}`
-        if (!sessionsMap.has(key)) {
-          sessionsMap.set(key, { year: entry.year, session: entry.session, variant })
-        }
-      }
-    }
-    
-    // Sort sessions
-    const sessions = Array.from(sessionsMap.values()).sort((a, b) => {
-      if (a.year !== b.year) return b.year - a.year
-      const order: Record<SessionType, number> = { 'Oct/Nov': 0, 'May/Jun': 1, 'Feb/Mar': 2 }
-      if (a.session !== b.session) return order[a.session] - order[b.session]
-      return a.variant - b.variant
-    })
-    
-    return sessions.map(({ year, session, variant }) => {
-      const sessionLabel = (session === 'May/Jun' ? `Summer ${year}` 
-        : session === 'Feb/Mar' ? `Spring ${year}` 
-        : `Winter ${year}`) + ` V${variant}`
-      
-      // My papers for this session
-      const myPapers = new Map<string, { marks: number | null; maxMarks: number }>()
-      for (const entry of mySubjectEntries) {
-        const entryVariant = getVariant(entry.paper_code)
-        if (entry.year === year && entry.session === session && entryVariant === variant) {
-          const paperNum = entry.paper_code[0]
-          myPapers.set(paperNum, { marks: entry.marks, maxMarks: entry.max_marks })
-        }
-      }
-      
-      // All friends' papers for this session
-      const allFriendsPapers = new Map<string, Map<string, { marks: number | null; maxMarks: number }>>()
-      for (const [friendId, entries] of allFriendsEntries) {
-        const friendPapers = new Map<string, { marks: number | null; maxMarks: number }>()
-        for (const entry of entries) {
-          const entryVariant = getVariant(entry.paper_code)
-          if (entry.year === year && entry.session === session && entryVariant === variant) {
-            const paperNum = entry.paper_code[0]
-            friendPapers.set(paperNum, { marks: entry.marks, maxMarks: entry.max_marks })
-          }
-        }
-        allFriendsPapers.set(friendId, friendPapers)
-      }
-      
-      return { year, session, variant, sessionLabel, myPapers, allFriendsPapers }
-    })
-  }
-  
   const comparisonRows = view === 'comparison' ? getComparisonRows() : []
-  const allFriendsRows = view === 'all' ? getAllFriendsComparisonRows() : []
   
   if (!isOpen) return null
 
+  const friendName = selectedFriend?.display_name || selectedFriend?.username || ''
+  const friendNameUpper = friendName.toUpperCase()
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#09090b]/80 backdrop-blur-md transition-opacity">
+      <div className="w-full max-w-3xl bg-[#09090b] border border-white/10 rounded-[24px] shadow-2xl overflow-hidden flex flex-col animate-fade-slide max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex justify-between items-center p-6">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <Users className="w-5 h-5 text-purple-500" />
+            <h2 className="text-lg font-bold text-white flex items-center gap-2.5">
+              <Users className="w-5 h-5 text-purple-400" />
               Compare with Friends
             </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-slate-500 mt-0.5">
               {config.subject_name}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5" />
           </button>
         </div>
         
         {/* Content */}
-        <div className="flex-1 overflow-auto p-4">
+        <div className="flex-1 overflow-auto px-6 pb-6">
           {isLoading ? (
             <div className="flex items-center justify-center h-48">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+              <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
             </div>
           ) : view === 'friends' ? (
-            // Friend Selection
-            <div className="space-y-3">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Select a friend to compare {config.subject_name} marks with:
-              </p>
-              
-              {friendComparisons.length === 0 ? (
-                <div className="text-center py-8">
-                  <Users className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                  <p className="text-gray-500 dark:text-gray-400">
-                    No friends with visible papers
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* Compare All Button */}
-                  {comparableFriends.length > 1 && (
-                    <button
-                      onClick={selectAllFriends}
-                      className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-purple-500/10 to-blue-500/10 dark:from-purple-500/20 dark:to-blue-500/20 hover:from-purple-500/20 hover:to-blue-500/20 dark:hover:from-purple-500/30 dark:hover:to-blue-500/30 border border-purple-200 dark:border-purple-800 rounded-lg transition-colors text-left"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
-                          <UsersRound className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-white">
-                            Compare with All Friends
-                          </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {comparableFriends.length} friends have {config.subject_name}
-                          </p>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-purple-500" />
-                    </button>
-                  )}
-                  
-                  {/* Individual Friend Buttons */}
-                  <div className="grid gap-2">
-                    {friendComparisons.map(({ friend, hasMatchingSubject }) => (
-                    <button
-                      key={friend.id}
-                      onClick={() => selectFriend(friend.id)}
-                      className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-left"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
-                          {friend.avatar_url ? (
-                            <img 
-                              src={friend.avatar_url} 
-                              alt="" 
-                              className="w-10 h-10 rounded-full object-cover"
-                            />
-                          ) : (
-                            <Users className="w-5 h-5 text-gray-500" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-white">
-                            {friend.display_name || friend.username}
-                          </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            @{friend.username}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {hasMatchingSubject ? (
-                          <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs rounded-full">
-                            Has {config.subject_name}
-                          </span>
-                        ) : (
-                          <span className="px-2 py-1 bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 text-xs rounded-full">
-                            No matching subject
-                          </span>
-                        )}
-                        <ChevronRight className="w-5 h-5 text-gray-400" />
-                      </div>
-                    </button>
-                  ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : view === 'all' ? (
-            // All Friends Comparison View
+            /* ── Friend Selection ── */
             <div className="space-y-4">
-              <button
-                onClick={() => setView('friends')}
-                className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
-              >
-                ← Back to friend list
-              </button>
-              
-              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg">
-                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
-                  <UsersRound className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-white">
-                    Comparing with {comparableFriends.length} Friends
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {config.subject_name}
-                  </p>
-                </div>
-              </div>
-              
-              {allFriendsRows.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-500 dark:text-gray-400">
-                    No entries to compare yet
-                  </p>
+              {friendComparisons.length === 0 ? (
+                <div className="text-center py-12">
+                  <Users className="w-12 h-12 text-slate-700 mx-auto mb-3" />
+                  <p className="text-slate-500">No friends with visible papers</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-gray-50 dark:bg-gray-700">
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300 sticky left-0 bg-gray-50 dark:bg-gray-700">
-                          Session
-                        </th>
-                        {config.papers.map(paper => (
-                          <th 
-                            key={`you-${paper.paper}`}
-                            className="px-3 py-3 text-center text-sm font-medium text-blue-600 dark:text-blue-400 whitespace-nowrap"
-                          >
-                            <div>P{paper.paper}</div>
-                            <div className="text-xs font-normal text-gray-500">You</div>
-                          </th>
-                        ))}
-                        {comparableFriends.map(({ friend }) => (
-                          config.papers.map(paper => (
-                            <th 
-                              key={`${friend.id}-${paper.paper}`}
-                              className="px-3 py-3 text-center text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap"
-                            >
-                              <div>P{paper.paper}</div>
-                              <div className="text-xs font-normal text-gray-500 truncate max-w-[80px]" title={friend.display_name || friend.username}>
-                                {(friend.display_name || friend.username).slice(0, 8)}
-                              </div>
-                            </th>
-                          ))
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {allFriendsRows.map(row => {
-                        // Calculate best marks for each paper to highlight winner
-                        const bestMarks = new Map<string, number>()
-                        config.papers.forEach(paper => {
-                          const myData = row.myPapers.get(paper.paper)
-                          let best = myData?.marks ?? -1
-                          
-                          for (const [, friendPapers] of row.allFriendsPapers) {
-                            const friendData = friendPapers.get(paper.paper)
-                            if (friendData?.marks != null && friendData.marks > best) {
-                              best = friendData.marks
-                            }
-                          }
-                          if (best >= 0) bestMarks.set(paper.paper, best)
-                        })
-                        
-                        return (
-                          <tr key={`${row.year}-${row.session}-V${row.variant}`} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                            <td className="px-4 py-3 text-sm text-gray-900 dark:text-white whitespace-nowrap sticky left-0 bg-white dark:bg-gray-800">
-                              {row.sessionLabel}
-                            </td>
-                            {/* My scores */}
-                            {config.papers.map(paper => {
-                              const myData = row.myPapers.get(paper.paper)
-                              const myMarks = myData?.marks ?? null
-                              const best = bestMarks.get(paper.paper)
-                              const isWinner = myMarks !== null && best !== undefined && myMarks === best
-                              
-                              return (
-                                <td 
-                                  key={`my-${paper.paper}`}
-                                  className="px-3 py-3 text-center"
-                                >
-                                  {myData ? (
-                                    <span className={`
-                                      text-sm font-medium
-                                      ${isWinner ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400'}
-                                    `}>
-                                      {myMarks ?? '-'}
-                                      <span className="text-gray-400 font-normal text-xs">/{myData.maxMarks}</span>
-                                    </span>
-                                  ) : (
-                                    <span className="text-gray-400">-</span>
-                                  )}
-                                </td>
-                              )
-                            })}
-                            {/* Friends' scores */}
-                            {comparableFriends.map(({ friend }) => {
-                              const friendPapers = row.allFriendsPapers.get(friend.id) || new Map()
-                              return config.papers.map(paper => {
-                                const friendData = friendPapers.get(paper.paper)
-                                const friendMarks = friendData?.marks ?? null
-                                const best = bestMarks.get(paper.paper)
-                                const isWinner = friendMarks !== null && best !== undefined && friendMarks === best
-                                
-                                return (
-                                  <td 
-                                    key={`${friend.id}-${paper.paper}`}
-                                    className="px-3 py-3 text-center"
-                                  >
-                                    {friendData ? (
-                                      <span className={`
-                                        text-sm font-medium
-                                        ${isWinner ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-white'}
-                                      `}>
-                                        {friendMarks ?? '-'}
-                                        <span className="text-gray-400 font-normal text-xs">/{friendData.maxMarks}</span>
-                                      </span>
-                                    ) : (
-                                      <span className="text-gray-400">-</span>
-                                    )}
-                                  </td>
-                                )
-                              })
-                            })}
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                <>
+                  <p className="text-[0.7rem] font-semibold text-slate-500 uppercase tracking-[0.15em]">
+                    Individual Friends
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {friendComparisons.map(({ friend, hasMatchingSubject }) => {
+                      const name = friend.display_name || friend.username
+                      const initial = name.charAt(0).toUpperCase()
+                      const color = getAvatarColor(name)
+                      
+                      return (
+                        <button
+                          key={friend.id}
+                          onClick={() => hasMatchingSubject && selectFriend(friend.id)}
+                          disabled={!hasMatchingSubject}
+                          className={`flex items-center gap-3 p-3.5 rounded-xl text-left transition-colors ${
+                            hasMatchingSubject 
+                              ? 'bg-white/[0.03] border border-white/10 hover:bg-white/[0.06] hover:border-white/15 cursor-pointer' 
+                              : 'bg-white/[0.02] border border-white/5 opacity-40 cursor-not-allowed'
+                          }`}
+                        >
+                          <div className={`w-10 h-10 ${color} rounded-full flex items-center justify-center shrink-0`}>
+                            {friend.avatar_url ? (
+                              <img 
+                                src={friend.avatar_url} 
+                                alt="" 
+                                className="w-10 h-10 rounded-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-sm font-bold text-white">{initial}</span>
+                            )}
+                          </div>
+                          <span className="text-sm font-semibold text-white truncate">{name}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </>
               )}
-              
-              <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mt-4">
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 bg-green-500 rounded-full" />
-                  <span>Highest score</span>
-                </div>
-              </div>
             </div>
           ) : (
-            // Comparison View
-            <div className="space-y-4">
+            /* ── Comparison View ── */
+            <div className="space-y-5">
               <button
                 onClick={() => setView('friends')}
-                className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+                className="flex items-center gap-1 text-sm font-medium text-sky-400 hover:text-sky-300 transition-colors"
               >
-                ← Back to friend list
+                <ChevronLeft className="w-4 h-4" />
+                Back to friend list
               </button>
               
               {selectedFriend && (
-                <div className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                  <div className="w-10 h-10 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
+                <div className="flex items-center gap-3.5 p-4 bg-gradient-to-r from-purple-500/15 to-purple-500/5 border border-purple-500/20 rounded-xl">
+                  <div className={`w-12 h-12 ${getAvatarColor(friendName)} rounded-xl flex items-center justify-center shrink-0`}>
                     {selectedFriend.avatar_url ? (
                       <img 
                         src={selectedFriend.avatar_url} 
                         alt="" 
-                        className="w-10 h-10 rounded-full object-cover"
+                        className="w-12 h-12 rounded-xl object-cover"
                       />
                     ) : (
-                      <Users className="w-5 h-5 text-gray-500" />
+                      <span className="text-base font-bold text-white">
+                        {friendName.charAt(0).toUpperCase()}
+                      </span>
                     )}
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      Comparing with {selectedFriend.display_name || selectedFriend.username}
+                    <p className="text-base font-bold text-white">
+                      Comparing with {friendName}
                     </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                    <p className="text-sm text-purple-300/70">
                       {config.subject_name}
                     </p>
                   </div>
@@ -580,38 +286,41 @@ export function CompareFriendsModal({ isOpen, onClose, config, friends, initialV
               )}
               
               {comparisonRows.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-500 dark:text-gray-400">
-                    No entries to compare yet
-                  </p>
+                <div className="text-center py-12">
+                  <p className="text-slate-500">No entries to compare yet</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-xl border border-white/10">
                   <table className="w-full">
                     <thead>
-                      <tr className="bg-gray-50 dark:bg-gray-700">
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <tr className="border-b border-white/10">
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                           Session
                         </th>
                         {config.papers.map(paper => (
                           <th 
                             key={paper.paper}
-                            className="px-4 py-3 text-center text-sm font-medium text-gray-700 dark:text-gray-300"
+                            className="px-2 py-3 text-center"
                             colSpan={2}
                           >
-                            Paper {paper.paper}
-                            <div className="flex justify-center gap-4 text-xs font-normal mt-1">
-                              <span className="text-blue-500">You</span>
-                              <span className="text-purple-500">{selectedFriend?.display_name || selectedFriend?.username}</span>
+                            <div className="text-sm font-bold text-white">
+                              Paper {paper.paper} <span className="text-slate-500 font-normal text-xs">/{paper.max_marks}</span>
+                            </div>
+                            <div className="flex justify-center gap-6 text-[0.7rem] font-semibold uppercase tracking-wider mt-1">
+                              <span className="text-cyan-400">You</span>
+                              <span className="text-purple-400">{friendNameUpper}</span>
                             </div>
                           </th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {comparisonRows.map(row => (
-                        <tr key={`${row.year}-${row.session}-V${row.variant}`} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-white whitespace-nowrap">
+                    <tbody>
+                      {comparisonRows.map((row, rowIdx) => (
+                        <tr 
+                          key={`${row.year}-${row.session}-V${row.variant}`} 
+                          className={`border-b border-white/5 ${rowIdx % 2 === 0 ? 'bg-white/[0.01]' : ''}`}
+                        >
+                          <td className="px-4 py-3.5 text-sm font-medium text-slate-300 whitespace-nowrap">
                             {row.sessionLabel}
                           </td>
                           {config.papers.map(paper => {
@@ -620,55 +329,53 @@ export function CompareFriendsModal({ isOpen, onClose, config, friends, initialV
                             const myMarks = myData?.marks ?? null
                             const friendMarks = friendData?.marks ?? null
                             
+                            const getMyColor = () => {
+                              if (myMarks === null) return 'text-white'
+                              if (friendMarks === null) return 'text-white'
+                              if (myMarks > friendMarks) return 'text-emerald-400'
+                              if (myMarks < friendMarks) return 'text-rose-400'
+                              return 'text-white'
+                            }
+                            
+                            const getFriendColor = () => {
+                              if (friendMarks === null) return 'text-white'
+                              if (myMarks === null) return 'text-white'
+                              if (friendMarks > myMarks) return 'text-emerald-400'
+                              if (friendMarks < myMarks) return 'text-rose-400'
+                              return 'text-white'
+                            }
+                            
                             return (
-                              <>
-                                <td 
-                                  key={`my-${paper.paper}`}
-                                  className="px-2 py-3 text-center"
-                                >
-                                  {myData ? (
-                                    <span className={`
-                                      text-sm font-medium
-                                      ${myMarks !== null && friendMarks !== null
-                                        ? myMarks > friendMarks
-                                          ? 'text-green-600 dark:text-green-400'
-                                          : myMarks < friendMarks
-                                            ? 'text-red-600 dark:text-red-400'
-                                            : 'text-gray-900 dark:text-white'
-                                        : 'text-gray-900 dark:text-white'
-                                      }
-                                    `}>
-                                      {myMarks ?? '-'}
-                                      <span className="text-gray-400 font-normal text-xs">/{myData.maxMarks}</span>
-                                    </span>
-                                  ) : (
-                                    <span className="text-gray-400">-</span>
-                                  )}
-                                </td>
-                                <td 
-                                  key={`friend-${paper.paper}`}
-                                  className="px-2 py-3 text-center border-r border-gray-200 dark:border-gray-700 last:border-r-0"
-                                >
-                                  {friendData ? (
-                                    <span className={`
-                                      text-sm font-medium
-                                      ${friendMarks !== null && myMarks !== null
-                                        ? friendMarks > myMarks
-                                          ? 'text-green-600 dark:text-green-400'
-                                          : friendMarks < myMarks
-                                            ? 'text-red-600 dark:text-red-400'
-                                            : 'text-gray-900 dark:text-white'
-                                        : 'text-gray-900 dark:text-white'
-                                      }
-                                    `}>
-                                      {friendMarks ?? '-'}
-                                      <span className="text-gray-400 font-normal text-xs">/{friendData.maxMarks}</span>
-                                    </span>
-                                  ) : (
-                                    <span className="text-gray-400">-</span>
-                                  )}
-                                </td>
-                              </>
+                              <td 
+                                key={`my-${paper.paper}`}
+                                className="px-1 py-3.5 text-center"
+                                colSpan={2}
+                              >
+                                <div className="flex justify-center gap-6">
+                                  {/* My score */}
+                                  <span className="min-w-[50px]">
+                                    {myData ? (
+                                      <span className={`text-sm font-bold ${getMyColor()}`}>
+                                        {myMarks ?? '—'}
+                                        <span className="text-slate-600 font-normal text-xs">/{myData.maxMarks}</span>
+                                      </span>
+                                    ) : (
+                                      <span className="text-slate-600">—</span>
+                                    )}
+                                  </span>
+                                  {/* Friend score */}
+                                  <span className="min-w-[50px]">
+                                    {friendData ? (
+                                      <span className={`text-sm font-bold ${getFriendColor()}`}>
+                                        {friendMarks ?? '—'}
+                                        <span className="text-slate-600 font-normal text-xs">/{friendData.maxMarks}</span>
+                                      </span>
+                                    ) : (
+                                      <span className="text-slate-600">—</span>
+                                    )}
+                                  </span>
+                                </div>
+                              </td>
                             )
                           })}
                         </tr>
@@ -678,28 +385,20 @@ export function CompareFriendsModal({ isOpen, onClose, config, friends, initialV
                 </div>
               )}
               
-              <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mt-4">
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 bg-green-500 rounded-full" />
-                  <span>Higher score</span>
+              {comparisonRows.length > 0 && (
+                <div className="flex items-center gap-5 text-xs text-slate-500 mt-2">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full" />
+                    <span>Higher score</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 bg-rose-500 rounded-full" />
+                    <span>Lower score</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 bg-red-500 rounded-full" />
-                  <span>Lower score</span>
-                </div>
-              </div>
+              )}
             </div>
           )}
-        </div>
-        
-        {/* Footer */}
-        <div className="flex justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-700">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium rounded-lg transition-colors"
-          >
-            Close
-          </button>
         </div>
       </div>
     </div>

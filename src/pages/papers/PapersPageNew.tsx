@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, Settings, Loader2, FileText, Percent, Users, UsersRound } from 'lucide-react'
+import { Plus, Settings, Loader2, BookOpen, Users, Layers, Check } from 'lucide-react'
 import { usePapersStore } from '../../stores/papersStoreNew'
 import { useTimerStore } from '../../stores/timerStore'
 import { useFriendsStore } from '../../stores/friendsStore'
+import { GlassCard } from '../../components/ui/GlassCard'
 import { PapersTable } from '../../components/papers/PapersTable'
 import { AddEntryModal } from '../../components/papers/AddEntryModal'
 import { AddSubjectModal } from '../../components/papers/AddSubjectModal'
@@ -16,215 +17,173 @@ export function PapersPage() {
     configs,
     selectedConfigId, 
     setSelectedConfig,
-    deleteSubjectConfig,
-    showPercentage,
-    toggleShowPercentage,
     getSubjectStats,
   } = usePapersStore()
   
-  const { initialize: initTimer, isInitialized: timerInitialized } = useTimerStore()
+  const { subjects, initialize: initTimer, isInitialized: timerInitialized } = useTimerStore()
   const { friends, initialize: initFriends, isInitialized: friendsInitialized } = useFriendsStore()
   
   const [showAddEntry, setShowAddEntry] = useState(false)
   const [showAddSubject, setShowAddSubject] = useState(false)
   const [showEditConfig, setShowEditConfig] = useState(false)
   const [showCompareFriends, setShowCompareFriends] = useState(false)
-  const [compareInitialView, setCompareInitialView] = useState<'friends' | 'all'>('friends')
 
-  // Initialize stores
   useEffect(() => {
     initialize()
-    if (!timerInitialized) {
-      initTimer()
-    }
-    if (!friendsInitialized) {
-      initFriends()
-    }
+    if (!timerInitialized) initTimer()
+    if (!friendsInitialized) initFriends()
   }, [initialize, initTimer, timerInitialized, initFriends, friendsInitialized])
+
+  // Auto-select first subject if none selected
+  useEffect(() => {
+    if (!selectedConfigId && configs.length > 0) {
+      setSelectedConfig(configs[0].id)
+    }
+  }, [configs, selectedConfigId, setSelectedConfig])
 
   const selectedConfig = configs.find(c => c.id === selectedConfigId)
   const stats = selectedConfigId ? getSubjectStats(selectedConfigId) : null
-  
-  // Friends who have papers visible
   const friendsWithPapers = friends.filter(f => f.privacy_papers)
 
-  const handleDeleteSubject = async () => {
-    if (!selectedConfigId) return
-    if (!window.confirm('Delete this subject and all its entries?')) return
-    await deleteSubjectConfig(selectedConfigId)
-  }
+  // Get subject details (code, exam_board) from timer store
+  const subjectDetails = selectedConfig 
+    ? subjects.find(s => s.id === selectedConfig.subject_id) 
+    : null
+  const subjectCode = subjectDetails?.code
+  const examBoard = subjectDetails?.exam_board
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 text-sky-400 animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Past Papers</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">Track your past paper attempts</p>
-        </div>
-        
-        {/* Percentage Toggle */}
-        <button
-          onClick={toggleShowPercentage}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-            showPercentage
-              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-              : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-          }`}
-        >
-          <Percent className="w-4 h-4" />
-          <span className="text-sm font-medium">Show %</span>
-        </button>
-      </div>
-
-      {/* Subject Tabs */}
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col gap-5 pb-10 animate-fade-slide">
+      
+      {/* 1. Subject Navigation */}
+      <div className="flex items-center gap-3 overflow-x-auto hide-scrollbar pb-1">
         {configs.map(config => (
           <button
             key={config.id}
             onClick={() => setSelectedConfig(config.id)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+            className={`px-5 py-2.5 rounded-xl text-[0.9rem] font-semibold transition-all whitespace-nowrap border ${
               selectedConfigId === config.id
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25'
-                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
+                ? 'bg-sky-500/15 text-sky-400 border-sky-500/20'
+                : 'bg-white/[0.02] text-slate-400 border-white/5 hover:bg-white/[0.05] hover:text-slate-200'
             }`}
           >
             {config.subject_name}
           </button>
         ))}
-        
-        {/* Add Subject Button */}
         <button
           onClick={() => setShowAddSubject(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors border-2 border-dashed border-gray-300 dark:border-gray-600"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[0.9rem] font-medium border border-dashed border-white/20 text-slate-400 hover:text-white hover:border-white/40 hover:bg-white/[0.02] transition-colors whitespace-nowrap"
         >
-          <Plus className="w-4 h-4" />
-          Add Subject
+          <Plus size={16} /> Add Subject
         </button>
       </div>
 
       {/* Selected Subject Content */}
       {selectedConfig ? (
-        <div className="space-y-4">
-          {/* Subject Header */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                  <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+        <div className="flex flex-col gap-6">
+          {/* 2. Main Hero Card */}
+          <GlassCard className="!p-8 bg-gradient-to-br from-sky-500/[0.02] to-transparent">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex items-center gap-5">
+                <div className="w-14 h-14 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 shadow-inner">
+                  <BookOpen size={26} />
                 </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                <div className="flex flex-col gap-1">
+                  <h2 className="text-[1.75rem] font-bold text-white tracking-tight">
                     {selectedConfig.subject_name}
+                    {subjectCode && <span className="text-slate-400 font-semibold"> ({subjectCode})</span>}
                   </h2>
-                  <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    <span>{selectedConfig.papers.length} paper{selectedConfig.papers.length !== 1 ? 's' : ''}</span>
-                    {stats && (
+                  <div className="flex items-center gap-3 text-sm text-slate-400 font-medium">
+                    {stats && stats.totalEntries > 0 && (
+                      <span className="flex items-center gap-1.5 text-emerald-400">
+                        <Check size={14} /> {stats.totalEntries} Papers Logged
+                      </span>
+                    )}
+                    {examBoard && (
                       <>
-                        <span>•</span>
-                        <span>{stats.totalEntries} entries</span>
-                        <span>•</span>
-                        <span>{stats.sessionsCount} sessions</span>
-                        {stats.averagePercentage > 0 && (
-                          <>
-                            <span>•</span>
-                            <span className="text-blue-600 dark:text-blue-400 font-medium">
-                              {stats.averagePercentage}% avg
-                            </span>
-                          </>
-                        )}
+                        <span className="w-1 h-1 rounded-full bg-slate-600"></span>
+                        <span>{examBoard}</span>
                       </>
                     )}
                   </div>
                 </div>
               </div>
-              
-              <div className="flex items-center gap-2">
-                {friendsWithPapers.length > 1 && (
-                  <button
-                    onClick={() => {
-                      setCompareInitialView('all')
-                      setShowCompareFriends(true)
-                    }}
-                    className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg hover:from-purple-600 hover:to-blue-600 transition-colors"
-                    title="Compare with all friends"
-                  >
-                    <UsersRound className="w-4 h-4" />
-                    <span className="text-sm font-medium">Compare All</span>
-                  </button>
+
+              <div className="flex items-center gap-4">
+                {stats && stats.averagePercentage > 0 && (
+                  <div className="hidden md:block text-right px-5 border-r border-white/10">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-0.5">Avg Score</p>
+                    <p className="text-[1.75rem] font-bold text-emerald-400 tracking-tight">{stats.averagePercentage.toFixed(1)}%</p>
+                  </div>
                 )}
+                
                 {friendsWithPapers.length > 0 && (
                   <button
-                    onClick={() => {
-                      setCompareInitialView('friends')
-                      setShowCompareFriends(true)
-                    }}
-                    className="flex items-center gap-2 px-3 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
-                    title="Compare with friends"
+                    onClick={() => setShowCompareFriends(true)}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-300 transition-colors font-semibold text-[0.9rem]"
                   >
-                    <Users className="w-4 h-4" />
-                    <span className="text-sm font-medium">Compare</span>
+                    <Users size={16} /> Compare
                   </button>
                 )}
                 <button
+                  onClick={() => setShowAddEntry(true)}
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-sky-500 text-[#09090b] hover:bg-sky-400 transition-colors font-semibold text-[0.9rem] shadow-[0_0_15px_rgba(56,189,248,0.15)]"
+                >
+                  <Plus size={18} strokeWidth={2.5} /> Log Paper
+                </button>
+                <button
                   onClick={() => setShowEditConfig(true)}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  className="p-2.5 rounded-xl bg-white/[0.02] text-slate-400 hover:text-white border border-transparent hover:border-white/10 transition-colors"
                   title="Edit papers config"
                 >
-                  <Settings className="w-5 h-5 text-gray-500" />
-                </button>
-                <button
-                  onClick={handleDeleteSubject}
-                  className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                  title="Delete subject"
-                >
-                  <Trash2 className="w-5 h-5 text-red-500" />
-                </button>
-                <button
-                  onClick={() => setShowAddEntry(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Entry
+                  <Settings size={18} />
                 </button>
               </div>
             </div>
-          </div>
+          </GlassCard>
 
-          {/* Papers Table */}
-          <PapersTable 
-            configId={selectedConfigId!} 
-            showPercentage={showPercentage}
-          />
+          {/* 3. Entry Logs List */}
+          <GlassCard className="!p-0 overflow-hidden">
+            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
+              <h3 className="text-[1.05rem] font-semibold text-slate-50 flex items-center gap-2">
+                <Layers size={18} className="text-slate-400" />
+                Attempt Log
+              </h3>
+            </div>
+            <div className="flex flex-col p-6 pt-2 gap-3">
+              <PapersTable 
+                configId={selectedConfigId!} 
+                onAddEntry={() => setShowAddEntry(true)}
+              />
+            </div>
+          </GlassCard>
         </div>
       ) : (
         /* Empty State */
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 border border-gray-200 dark:border-gray-700 text-center">
-          <div className="mx-auto w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
-            <FileText className="w-8 h-8 text-gray-400" />
+        <GlassCard className="text-center !py-16">
+          <div className="mx-auto w-16 h-16 bg-white/[0.03] border border-white/[0.06] rounded-2xl flex items-center justify-center mb-5">
+            <BookOpen size={28} className="text-slate-500" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            No subjects yet
-          </h3>
-          <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+          <h3 className="text-lg font-bold text-slate-50 mb-2">No subjects yet</h3>
+          <p className="text-slate-500 text-sm mb-8 max-w-md mx-auto">
             Add a subject to start tracking your past paper attempts. Configure which papers you take and their max marks.
           </p>
           <button
             onClick={() => setShowAddSubject(true)}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-sky-500 text-[#09090b] rounded-xl font-semibold hover:bg-sky-400 shadow-[0_5px_20px_rgba(56,189,248,0.2)] transition-all duration-300"
           >
-            <Plus className="w-5 h-5" />
+            <Plus size={18} />
             Add Your First Subject
           </button>
-        </div>
+        </GlassCard>
       )}
 
       {/* Modals */}
@@ -232,7 +191,6 @@ export function PapersPage() {
         isOpen={showAddSubject} 
         onClose={() => setShowAddSubject(false)} 
       />
-      
       {selectedConfig && (
         <>
           <AddEntryModal
@@ -250,7 +208,6 @@ export function PapersPage() {
             onClose={() => setShowCompareFriends(false)}
             config={selectedConfig}
             friends={friendsWithPapers}
-            initialView={compareInitialView}
           />
         </>
       )}

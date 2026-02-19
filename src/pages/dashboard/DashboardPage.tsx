@@ -34,7 +34,7 @@ function formatTimer(totalSeconds: number): string {
 function SectionHeader({ title, icon: Icon, linkText, onLinkClick }: { title: string; icon: React.ElementType; linkText: string; onLinkClick?: () => void }) {
   return (
     <div className="flex justify-between items-center">
-      <h2 className="text-[1.1rem] font-semibold flex items-center gap-2 text-slate-50">
+      <h2 className="text-[1.25rem] font-semibold flex items-center gap-2 text-slate-50">
         <Icon size={20} className="text-slate-400" />
         {title}
       </h2>
@@ -93,7 +93,7 @@ function TimerAndActivitySection() {
                 } else if (isRunning) {
                   pauseTimer()
                 } else {
-                  navigate('/timer')
+                  navigate('/timer?autostart=1')
                 }
               }}
               className={`flex items-center gap-2 px-4 py-1.5 rounded-full font-semibold transition-all duration-300 ${

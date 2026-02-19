@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, Plus, Trash2 } from 'lucide-react'
+import { X, Trash2, ChevronDown } from 'lucide-react'
 import { usePapersStore } from '../../stores/papersStoreNew'
 import { useTimerStore } from '../../stores/timerStore'
 import type { PaperConfig } from '../../stores/papersStoreNew'
@@ -25,7 +25,6 @@ export function AddSubjectModal({ isOpen, onClose }: AddSubjectModalProps) {
 
   const addPaper = () => {
     if (papers.length >= 5) return
-    // Find next available paper number
     const usedPapers = papers.map(p => p.paper)
     const nextPaper = PAPER_OPTIONS.find(p => !usedPapers.includes(p))
     if (nextPaper) {
@@ -47,7 +46,6 @@ export function AddSubjectModal({ isOpen, onClose }: AddSubjectModalProps) {
   const handleCreateSubject = async () => {
     if (!newSubjectName.trim()) return
     await addTimerSubject(newSubjectName.trim())
-    // The store will refetch subjects, so we'll select the new one after render
     setNewSubjectName('')
     setShowNewSubject(false)
   }
@@ -69,40 +67,51 @@ export function AddSubjectModal({ isOpen, onClose }: AddSubjectModalProps) {
     })
 
     setIsSubmitting(false)
-    
-    // Reset form
     setSelectedSubjectId('')
     setPapers([{ paper: '1', max_marks: 75 }])
     onClose()
   }
+
+  if (!isOpen) return null
 
   const getAvailablePapers = (currentPaper: string) => {
     const usedPapers = papers.map(p => p.paper).filter(p => p !== currentPaper)
     return PAPER_OPTIONS.filter(p => !usedPapers.includes(p))
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg mx-4 p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Add Subject</h2>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#09090b]/80 backdrop-blur-md transition-opacity">
+      <div className="w-full max-w-lg bg-[#09090b] border border-white/10 rounded-[24px] shadow-2xl overflow-hidden flex flex-col animate-fade-slide max-h-[90vh]">
+        {/* Header */}
+        <div className="flex justify-between items-center p-6 border-b border-white/5 bg-white/[0.02]">
+          <div>
+            <h3 className="text-lg font-semibold text-white tracking-tight">Configure Subject</h3>
+            <p className="text-xs font-medium text-slate-400 mt-1">Set up paper layout and max marks</p>
+          </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-slate-400 transition-colors"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X size={16} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="flex flex-col overflow-y-auto">
+          <div className="p-6 flex flex-col gap-6">
           {/* Subject Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Subject
-            </label>
+            <div className="flex justify-between items-center ml-1">
+              <label className="text-xs font-medium text-slate-400">Subject</label>
+              {!showNewSubject && (
+                <button
+                  type="button"
+                  onClick={() => setShowNewSubject(true)}
+                  className="text-xs font-semibold text-sky-400 hover:text-sky-300 transition-colors"
+                >
+                  + Create new
+                </button>
+              )}
+            </div>
             {showNewSubject ? (
               <div className="flex gap-2">
                 <input
@@ -110,130 +119,124 @@ export function AddSubjectModal({ isOpen, onClose }: AddSubjectModalProps) {
                   value={newSubjectName}
                   onChange={(e) => setNewSubjectName(e.target.value)}
                   placeholder="New subject name"
-                  className="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl p-3 text-sm text-slate-200 outline-none focus:border-sky-500/50 placeholder:text-slate-600 font-medium transition-colors"
                   autoFocus
                 />
                 <button
                   type="button"
                   onClick={handleCreateSubject}
-                  className="px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700"
+                  className="px-4 py-3 bg-sky-500 text-[#09090b] font-semibold rounded-xl hover:bg-sky-400 transition-colors text-sm"
                 >
                   Create
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowNewSubject(false)}
-                  className="px-3 py-2.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl"
+                  className="px-3 py-3 text-slate-500 hover:bg-white/5 rounded-xl transition-colors text-sm"
                 >
                   Cancel
                 </button>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="relative">
                 <select
                   value={selectedSubjectId}
                   onChange={(e) => setSelectedSubjectId(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full bg-white/[0.03] border border-white/10 rounded-xl p-3 text-sm text-slate-200 outline-none focus:border-sky-500/50 appearance-none font-medium transition-colors"
                 >
-                  <option value="">Select a subject</option>
+                  <option value="" className="bg-[#09090b]">Select a subject</option>
                   {subjects.map(subject => (
-                    <option key={subject.id} value={subject.id}>
+                    <option key={subject.id} value={subject.id} className="bg-[#09090b]">
                       {subject.name} {subject.code ? `(${subject.code})` : ''}
                     </option>
                   ))}
                 </select>
-                <button
-                  type="button"
-                  onClick={() => setShowNewSubject(true)}
-                  className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                >
-                  + Create new subject
-                </button>
+                <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
               </div>
             )}
           </div>
 
           {/* Papers Configuration */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <div className="flex flex-col gap-3">
+            <div className="flex justify-between items-end ml-1 mb-1">
+              <label className="text-xs font-medium text-slate-400">
                 Papers ({papers.length}/5)
               </label>
               {papers.length < 5 && (
                 <button
                   type="button"
                   onClick={addPaper}
-                  className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                  className="text-xs font-semibold text-sky-400 hover:text-sky-300 transition-colors flex items-center gap-1"
                 >
-                  <Plus className="w-4 h-4" />
-                  Add Paper
+                  + Add Paper
                 </button>
               )}
             </div>
             
-            <div className="space-y-3">
-              {papers.map((paper, index) => (
-                <div 
-                  key={index}
-                  className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl"
-                >
+            {papers.map((paper, index) => (
+              <div 
+                key={index}
+                className="flex items-center gap-3"
+              >
+                <div className="relative flex-1">
                   <select
                     value={paper.paper}
                     onChange={(e) => updatePaper(index, 'paper', e.target.value)}
-                    className="w-28 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
+                    className="w-full bg-white/[0.03] border border-white/10 rounded-xl p-3 text-sm font-medium text-slate-200 outline-none focus:border-sky-500/50 appearance-none cursor-pointer transition-colors"
                   >
                     {getAvailablePapers(paper.paper).map(p => (
-                      <option key={p} value={p}>Paper {p}</option>
+                      <option key={p} value={p} className="bg-[#09090b]">Paper {p}</option>
                     ))}
                   </select>
-                  
-                  <div className="flex-1 flex items-center gap-2">
-                    <span className="text-sm text-gray-500">Max:</span>
-                    <input
-                      type="number"
-                      value={paper.max_marks}
-                      onChange={(e) => updatePaper(index, 'max_marks', parseInt(e.target.value) || 0)}
-                      min={1}
-                      max={200}
-                      className="w-20 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-center"
-                    />
-                    <span className="text-sm text-gray-500">marks</span>
-                  </div>
-                  
-                  {papers.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removePaper(index)}
-                      className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
+                  <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                 </div>
-              ))}
-            </div>
+                
+                <div className="flex items-center gap-2 bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 focus-within:border-sky-500/50 transition-colors w-28">
+                  <span className="text-xs text-slate-500 font-medium">Max:</span>
+                  <input
+                    type="number"
+                    value={paper.max_marks}
+                    onChange={(e) => updatePaper(index, 'max_marks', parseInt(e.target.value) || 0)}
+                    min={1}
+                    max={200}
+                    className="w-full bg-transparent text-sm font-semibold text-white outline-none text-right"
+                  />
+                </div>
+                
+                {papers.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removePaper(index)}
+                    className="p-2.5 text-slate-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-xl transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </div>
+            ))}
             
-            <p className="text-xs text-gray-500 mt-2">
-              Minimum 1 paper, maximum 5 papers per subject
+            <p className="text-[10px] text-slate-500 font-medium ml-1 mt-1">
+              Minimum 1 paper, maximum 5 papers per subject.
             </p>
           </div>
 
+          </div>
+
           {/* Actions */}
-          <div className="flex gap-3 pt-2">
+          <div className="p-6 pt-0 flex gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="flex-1 py-3 rounded-xl font-semibold text-sm bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !selectedSubjectId || papers.length === 0}
-              className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              className="flex-1 py-3 rounded-xl font-semibold text-sm bg-sky-500 text-[#09090b] hover:bg-sky-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              <Plus className="w-4 h-4" />
-              Add Subject
+              Save Configuration
             </button>
           </div>
         </form>
