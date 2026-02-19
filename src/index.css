@@ -40,10 +40,6 @@
   --ring: 224.3 76.3% 48%;
 }
 
-* {
-  border-color: hsl(var(--border));
-}
-
 body {
   margin: 0;
   background-color: hsl(var(--background));

@@ -1,6 +1,6 @@
 import { useAuthStore } from '../../stores/authStore'
 import { useTimerStore } from '../../stores/timerStore'
-import { Bell, Search, LogOut, User, Timer } from 'lucide-react'
+import { Bell, Search, LogOut, Timer } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -31,28 +31,15 @@ export function Navbar() {
   }, [])
 
   return (
-    <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6">
-      {/* Search */}
-      <div className="flex-1 max-w-md">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search..."
-            className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-          />
-        </div>
-      </div>
-
-      {/* Right side */}
+    <header className="w-full flex justify-end items-center py-4 px-6 md:px-8 border-b border-white/[0.02] bg-transparent">
       <div className="flex items-center gap-4">
         {/* Active Timer Indicator */}
         {isRunning && (
           <button
             onClick={() => navigate('/timer')}
-            className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 bg-sky-500/15 text-sky-400 border border-sky-500/20 rounded-full hover:bg-sky-500/25 transition-colors"
           >
-            <span className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full animate-pulse" />
+            <span className="w-2 h-2 bg-sky-400 rounded-full animate-pulse" />
             <Timer className="w-4 h-4" />
             <span className="font-mono font-medium text-sm">
               {formatTime(elapsedSeconds)}
@@ -60,19 +47,25 @@ export function Navbar() {
           </button>
         )}
 
+        {/* Search */}
+        <div className="hidden md:flex items-center bg-white/[0.03] border border-white/10 rounded-full px-4 py-2">
+          <Search size={16} className="text-slate-400 mr-2" />
+          <input type="text" placeholder="Search..." className="bg-transparent border-none outline-none text-sm text-slate-200 placeholder:text-slate-500 w-32 focus:w-48 transition-all" />
+        </div>
+
         {/* Notifications */}
-        <button className="p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 rounded-lg transition-colors relative">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+        <button className="p-2 bg-white/[0.03] border border-white/10 rounded-full text-slate-400 hover:text-white transition-colors relative">
+          <Bell size={18} />
+          <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#09090b]"></span>
         </button>
 
         {/* User Menu */}
         <div className="relative" ref={dropdownRef}>
-          <button
+          <div
             onClick={() => setShowDropdown(!showDropdown)}
-            className="flex items-center gap-3 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="flex items-center gap-3 bg-white/[0.03] border border-white/10 p-1.5 pr-4 rounded-full cursor-pointer hover:bg-white/[0.06] transition-colors"
           >
-            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-sm text-white">
               {profile?.avatar_url ? (
                 <img
                   src={profile.avatar_url}
@@ -80,33 +73,28 @@ export function Navbar() {
                   className="w-8 h-8 rounded-full object-cover"
                 />
               ) : (
-                <User className="w-4 h-4 text-white" />
+                profile?.display_name?.charAt(0) || 'U'
               )}
             </div>
-            <div className="text-left hidden sm:block">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                {profile?.display_name || 'User'}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {profile?.user_code}
-              </p>
-            </div>
-          </button>
+            <span className="text-sm font-medium hidden sm:block text-slate-200">
+              {profile?.display_name || 'User'} <span className="text-slate-500 text-xs">{profile?.user_code}</span>
+            </span>
+          </div>
 
           {/* Dropdown */}
           {showDropdown && (
-            <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
-              <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
+            <div className="absolute right-0 top-full mt-2 w-48 bg-[#18181b] rounded-xl shadow-lg border border-white/10 py-1 z-50">
+              <div className="px-4 py-2 border-b border-white/10">
+                <p className="text-sm font-medium text-slate-200">
                   {profile?.display_name}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-slate-500">
                   {profile?.user_code}
                 </p>
               </div>
               <button
                 onClick={() => signOut()}
-                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-white/5 transition-colors"
               >
                 <LogOut className="w-4 h-4" />
                 Sign Out
