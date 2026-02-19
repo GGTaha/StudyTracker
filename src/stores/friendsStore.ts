@@ -58,6 +58,7 @@ export interface FriendStudyingStatus {
   user_id: string
   is_studying: boolean
   subject_name: string | null
+  subject_code: string | null
   subject_color: string | null
   started_at: string | null
 }
@@ -116,11 +117,13 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
     if (isInitialized) return
     
     set({ isLoading: true })
-    // First fetch friends, then activities (which depends on friends)
+    // First fetch friends, then everything that depends on friends
     await get().fetchFriends()
     await get().fetchPendingRequests()
     await get().fetchActivities()
+    await get().fetchStudyingStatus()
     await get().fetchLeaderboard('weekly')
+    await get().fetchLeaderboard('all-time')
     set({ isLoading: false, isInitialized: true })
   },
   
@@ -415,6 +418,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
         subject_id,
         subjects (
           name,
+          code,
           color
         )
       `)
@@ -434,6 +438,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
         user_id: friendId,
         is_studying: false,
         subject_name: null,
+        subject_code: null,
         subject_color: null,
         started_at: null,
       })
@@ -444,12 +449,13 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       const subjectsData = session.subjects as unknown
       // subjects could be an array or single object depending on relation
       const subjects = Array.isArray(subjectsData) 
-        ? subjectsData[0] as { name: string; color: string } | undefined
-        : subjectsData as { name: string; color: string } | null
+        ? subjectsData[0] as { name: string; color: string; code?: string } | undefined
+        : subjectsData as { name: string; color: string; code?: string } | null
       statusMap.set(session.user_id, {
         user_id: session.user_id,
         is_studying: true,
         subject_name: subjects?.name || null,
+        subject_code: subjects?.code || null,
         subject_color: subjects?.color || null,
         started_at: session.started_at,
       })

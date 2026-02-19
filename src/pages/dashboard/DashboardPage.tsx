@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
 import { useTimerStore } from '../../stores/timerStore'
@@ -6,8 +6,7 @@ import { useFriendsStore } from '../../stores/friendsStore'
 import { usePapersStore } from '../../stores/papersStoreNew'
 import {
   Clock, Calendar, FileText, Users, TrendingUp,
-  Play, Pause, Plus, ChevronRight, UserPlus,
-  Search, Bell
+  Play, Pause, Plus, ChevronRight, UserPlus
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { GlassCard } from '../../components/ui/GlassCard'
@@ -372,7 +371,7 @@ function LeaderboardSection() {
 
 // --- Main Dashboard Page ---
 export function DashboardPage() {
-  const { profile, signOut } = useAuthStore()
+  const { profile } = useAuthStore()
   const {
     initialize,
     getTodayTotal,
@@ -380,8 +379,6 @@ export function DashboardPage() {
   } = useTimerStore()
   const { friends, initialize: initFriends } = useFriendsStore()
   const { entries, initialize: initPapers } = usePapersStore()
-  const [showDropdown, setShowDropdown] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     initialize()
@@ -389,73 +386,17 @@ export function DashboardPage() {
     initPapers()
   }, [initialize, initFriends, initPapers])
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDropdown(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
   const todayTotal = getTodayTotal()
   const weeklyData = getWeeklyData()
   const weekTotal = weeklyData.reduce((acc, d) => acc + d.seconds, 0)
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Inline Header */}
-      <header className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-        <div>
-          <h1 className="text-[2.25rem] font-semibold mb-2 tracking-tight">Welcome back, {profile?.display_name || 'Student'}! 👋</h1>
-          <p className="text-slate-400 text-[1.05rem]">Ready to continue your study journey? Let's make today productive.</p>
-        </div>
-
-        {/* Top Nav: Search, Notifications, Profile */}
-        <div className="flex items-center gap-4">
-          <div className="hidden md:flex items-center bg-white/[0.03] border border-white/[0.06] rounded-full px-5 py-3">
-            <Search size={20} className="text-slate-400 mr-3" />
-            <input type="text" placeholder="Search..." className="bg-transparent border-none outline-none text-[0.95rem] text-slate-200 placeholder:text-slate-500 w-40 focus:w-56 transition-all" />
-          </div>
-          <button className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-full text-slate-400 hover:text-white transition-colors relative">
-            <Bell size={22} />
-            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#09090b]"></span>
-          </button>
-          <div className="relative" ref={dropdownRef}>
-            <div
-              onClick={() => setShowDropdown(!showDropdown)}
-              className="flex items-center gap-3 bg-white/[0.03] border border-white/[0.06] p-1.5 pr-4 rounded-full cursor-pointer hover:bg-white/[0.06] transition-colors"
-            >
-              <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center font-bold text-[0.95rem] text-white">
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt={profile.display_name || ''} className="w-10 h-10 rounded-full object-cover" />
-                ) : (
-                  (profile?.display_name || 'U').charAt(0)
-                )}
-              </div>
-              <span className="text-[0.95rem] font-medium hidden sm:block text-slate-200">
-                {profile?.display_name || 'User'} <span className="text-slate-500 text-xs">{profile?.user_code}</span>
-              </span>
-            </div>
-
-            {showDropdown && (
-              <div className="absolute right-0 top-full mt-2 w-48 bg-[#18181b] rounded-xl shadow-lg border border-white/[0.06] py-1 z-50">
-                <div className="px-4 py-2 border-b border-white/[0.06]">
-                  <p className="text-sm font-medium text-slate-200">{profile?.display_name}</p>
-                  <p className="text-xs text-slate-500">{profile?.user_code}</p>
-                </div>
-                <button
-                  onClick={() => signOut()}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-white/5 transition-colors"
-                >
-                  Sign Out
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
+      {/* Greeting */}
+      <div>
+        <h1 className="text-[2.25rem] font-semibold mb-2 tracking-tight">Welcome back, {profile?.display_name || 'Student'}! 👋</h1>
+        <p className="text-slate-400 text-[1.05rem]">Ready to continue your study journey? Let's make today productive.</p>
+      </div>
 
       {/* Top Stats Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

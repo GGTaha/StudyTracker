@@ -1,612 +1,531 @@
 import { useEffect, useState } from 'react'
 import { useFriendsStore } from '../../stores/friendsStore'
 import type { Friend, FriendRequest } from '../../stores/friendsStore'
+import { GlassCard } from '../../components/ui/GlassCard'
 import { 
-  Users, UserPlus, Trophy, Activity, Clock, 
-  Check, X, UserMinus, ChevronRight, Loader2, FileText, RefreshCw, Radio
+  Users, UserPlus, Award, Activity, Bell,
+  Check, X, ChevronRight, Loader2, Sparkles
 } from 'lucide-react'
 import { AddFriendModal } from '../../components/friends/AddFriendModal'
 import { FriendPapersModal } from '../../components/friends/FriendPapersModal'
 
-type Tab = 'friends' | 'activity' | 'leaderboard'
+// ── Avatar color palette ──
+const AVATAR_COLORS = [
+  'bg-purple-500',
+  'bg-rose-500',
+  'bg-sky-500',
+  'bg-emerald-500',
+  'bg-amber-500',
+  'bg-pink-500',
+  'bg-indigo-500',
+  'bg-teal-500',
+  'bg-blue-500',
+  'bg-orange-500',
+]
+function getAvatarColor(name: string): string {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
+}
+
 type LeaderboardPeriod = 'weekly' | 'all-time'
 
 export function FriendsPage() {
-  const { 
-    friends, 
-    pendingRequests, 
-    activities, 
+  const {
+    friends,
+    pendingRequests,
+    activities,
     weeklyLeaderboard,
     allTimeLeaderboard,
     studyingStatus,
-    isLoading, 
+    isLoading,
+    isInitialized,
     initialize,
     acceptFriendRequest,
     rejectFriendRequest,
-    removeFriend,
-    fetchLeaderboard,
-    fetchActivities,
     fetchStudyingStatus,
   } = useFriendsStore()
-  
-  const [activeTab, setActiveTab] = useState<Tab>('friends')
+
   const [showAddFriend, setShowAddFriend] = useState(false)
-  const [leaderboardPeriod, setLeaderboardPeriod] = useState<LeaderboardPeriod>('weekly')
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null)
   const [showFriendPapers, setShowFriendPapers] = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  
+  const [showRequestsModal, setShowRequestsModal] = useState(false)
+  const [leaderboardPeriod, setLeaderboardPeriod] = useState<LeaderboardPeriod>('weekly')
+
   useEffect(() => {
     initialize()
   }, [initialize])
-  
+
+  // Always refresh studying status when the page is visited (not gated by isInitialized)
   useEffect(() => {
-    if (activeTab === 'leaderboard') {
-      fetchLeaderboard(leaderboardPeriod)
-    } else if (activeTab === 'activity') {
-      fetchActivities()
-    } else if (activeTab === 'friends') {
+    if (isInitialized) {
       fetchStudyingStatus()
     }
-  }, [activeTab, leaderboardPeriod, fetchLeaderboard, fetchActivities, fetchStudyingStatus])
-  
-  const handleRefreshActivity = async () => {
-    setIsRefreshing(true)
-    await fetchActivities()
-    setIsRefreshing(false)
-  }
-  
-  const tabs = [
-    { id: 'friends' as Tab, label: 'Friends', icon: Users },
-    { id: 'activity' as Tab, label: 'Activity', icon: Activity },
-    { id: 'leaderboard' as Tab, label: 'Leaderboard', icon: Trophy },
-  ]
-  
+  }, [isInitialized, fetchStudyingStatus])
+
   const formatDuration = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600)
     const minutes = Math.floor((seconds % 3600) / 60)
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`
-    }
+    if (hours > 0) return `${hours}h ${String(minutes).padStart(2, '0')}m`
     return `${minutes}m`
   }
-  
+
   const formatTimeAgo = (dateStr: string): string => {
     const date = new Date(dateStr)
     const now = new Date()
     const diffMs = now.getTime() - date.getTime()
     const diffMins = Math.floor(diffMs / 60000)
-    
     if (diffMins < 1) return 'Just now'
-    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffMins < 60) return `${diffMins} mins ago`
     const diffHours = Math.floor(diffMins / 60)
-    if (diffHours < 24) return `${diffHours}h ago`
-    const diffDays = Math.floor(diffHours / 24)
-    return `${diffDays}d ago`
+    if (diffHours < 24) return `${diffHours} hours ago`
+    return `${Math.floor(diffHours / 24)} days ago`
   }
-  
+
+  const formatStudyingTime = (startedAt: string): string => {
+    const started = new Date(startedAt)
+    const now = new Date()
+    const diffMs = now.getTime() - started.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    if (diffMins < 1) return 'just started'
+    if (diffMins < 60) return `${diffMins}m`
+    const diffHours = Math.floor(diffMins / 60)
+    return `${diffHours}h ${String(diffMins % 60).padStart(2, '0')}m`
+  }
+
   const incomingRequests = pendingRequests.filter(r => r.is_incoming)
   const outgoingRequests = pendingRequests.filter(r => !r.is_incoming)
-  
   const leaderboard = leaderboardPeriod === 'weekly' ? weeklyLeaderboard : allTimeLeaderboard
-  
-  const handleViewPapers = (friend: Friend) => {
+
+  // Sort friends: studying first, then online, then offline
+  const statusPriority: Record<string, number> = { studying: 1, online: 2, offline: 3 }
+  const sortedFriends = [...friends].sort((a, b) => {
+    const aStudying = studyingStatus.find(s => s.user_id === a.id)
+    const bStudying = studyingStatus.find(s => s.user_id === b.id)
+    const aStatus = aStudying?.is_studying ? 'studying' : 'offline' // We only know studying vs not
+    const bStatus = bStudying?.is_studying ? 'studying' : 'offline'
+    return (statusPriority[aStatus] ?? 3) - (statusPriority[bStatus] ?? 3)
+  })
+
+  const handleViewProfile = (friend: Friend) => {
     setSelectedFriend(friend)
     setShowFriendPapers(true)
   }
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 text-sky-400 animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Friends
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Connect with friends and track progress together
-          </p>
-        </div>
-        <button
-          onClick={() => setShowAddFriend(true)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
-        >
-          <UserPlus className="w-5 h-5" />
-          Add Friend
-        </button>
-      </div>
-      
-      {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
-        {tabs.map(tab => {
-          const Icon = tab.icon
-          const isActive = activeTab === tab.id
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`
-                flex items-center gap-2 px-4 py-3 font-medium transition-colors border-b-2 -mb-px
-                ${isActive 
-                  ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400' 
-                  : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-300'
-                }
-              `}
-            >
-              <Icon className="w-5 h-5" />
-              {tab.label}
-              {tab.id === 'friends' && incomingRequests.length > 0 && (
-                <span className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
-                  {incomingRequests.length}
+    <div className="flex flex-col gap-5 pb-10 animate-fade-slide">
+      {/* ── Two-column layout ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-5">
+        
+        {/* ── LEFT COLUMN ── */}
+        <div className="flex flex-col gap-5">
+
+          {/* Friend Requests Bar — always visible */}
+          <button
+            onClick={() => setShowRequestsModal(true)}
+            className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/[0.05] rounded-2xl hover:bg-white/[0.04] hover:border-white/10 transition-all text-left w-full group shrink-0 shadow-lg"
+          >
+              <div className="flex items-center gap-4">
+                <div className="relative flex items-center justify-center w-12 h-12 bg-amber-500/10 text-amber-400 rounded-xl shadow-inner group-hover:scale-105 transition-transform">
+                  <Bell size={20} />
+                  {incomingRequests.length > 0 && (
+                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-[#09090b] animate-pulse" />
+                  )}
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[15px] font-bold text-slate-100">Friend Requests</span>
+                  <span className="text-xs text-slate-400 font-medium">
+                    <span className={incomingRequests.length > 0 ? 'text-amber-400' : ''}>
+                      {incomingRequests.length} New
+                    </span>
+                    {' • '}
+                    {outgoingRequests.length} Pending
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 group-hover:text-slate-300 transition-colors">
+                Manage <ChevronRight size={16} />
+              </div>
+          </button>
+
+          {/* Your Roster Card */}
+          <GlassCard className="flex-1 !p-0 overflow-hidden">
+            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
+              <div className="flex items-center gap-3">
+                <h3 className="font-semibold text-slate-50 flex items-center gap-2">
+                  <Users size={18} className="text-slate-400" />
+                  Your Roster
+                </h3>
+                <span className="bg-white/5 text-slate-400 px-2 py-0.5 rounded-md text-xs font-bold">
+                  {friends.length} Friends
                 </span>
+              </div>
+              <button
+                onClick={() => setShowAddFriend(true)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sky-500 text-[#09090b] hover:bg-sky-400 transition-colors font-semibold text-sm shadow-[0_0_15px_rgba(56,189,248,0.15)]"
+              >
+                <UserPlus size={16} /> Add Friend
+              </button>
+            </div>
+
+            <div className="flex flex-col p-4 gap-2">
+              {sortedFriends.length === 0 ? (
+                <div className="text-center py-12">
+                  <Users className="w-12 h-12 text-slate-700 mx-auto mb-3" />
+                  <p className="text-slate-500">No friends yet. Add some friends to get started!</p>
+                </div>
+              ) : (
+                sortedFriends.map(friend => {
+                  const studying = studyingStatus.find(s => s.user_id === friend.id)
+                  const isStudying = studying?.is_studying ?? false
+                  const name = friend.display_name || friend.username
+                  const initial = name.charAt(0).toUpperCase()
+                  const color = getAvatarColor(name)
+
+                  return (
+                    <div
+                      key={friend.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white/[0.015] border border-white/[0.04] rounded-2xl hover:bg-white/[0.03] hover:border-white/10 transition-colors gap-4"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <div className={`w-12 h-12 rounded-[1rem] flex items-center justify-center text-white font-bold text-lg shadow-inner ${color} ${!isStudying ? 'opacity-70' : ''}`}>
+                            {friend.avatar_url ? (
+                              <img src={friend.avatar_url} alt="" className="w-12 h-12 rounded-[1rem] object-cover" />
+                            ) : (
+                              initial
+                            )}
+                          </div>
+                          {isStudying && (
+                            <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-[3px] border-[#09090b] animate-pulse" />
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-2">
+                            <h4 className={`font-semibold text-base ${!isStudying ? 'text-slate-300' : 'text-slate-100'}`}>
+                              {name}
+                            </h4>
+                            <span className="text-xs font-mono text-slate-500">
+                              #{friend.user_code}
+                            </span>
+                          </div>
+                          {isStudying ? (
+                            <span className="text-xs font-medium text-emerald-400">
+                              {studying?.subject_name ? (
+                                <>
+                                  Studying {studying.subject_name}
+                                  {studying.subject_code && (
+                                    <span className="opacity-70"> ({studying.subject_code})</span>
+                                  )}
+                                </>
+                              ) : (
+                                'Studying'
+                              )}
+                              {studying?.started_at && (
+                                <span className="opacity-60 ml-1">({formatStudyingTime(studying.started_at)})</span>
+                              )}
+                            </span>
+                          ) : (
+                            <span className="text-xs font-medium text-slate-500">Offline</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 sm:gap-6 ml-16 sm:ml-0 border-t border-white/5 sm:border-0 pt-3 sm:pt-0">
+                        {(() => {
+                          const allTimeEntry = allTimeLeaderboard.find(e => e.user_id === friend.id)
+                          if (allTimeEntry && allTimeEntry.total_seconds > 0) {
+                            return (
+                              <div className="flex flex-col items-end mr-2">
+                                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">All Time</span>
+                                <span className="text-sm font-bold text-slate-200">{formatDuration(allTimeEntry.total_seconds)}</span>
+                              </div>
+                            )
+                          }
+                          return null
+                        })()}
+                        <button
+                          onClick={() => handleViewProfile(friend)}
+                          className="flex items-center gap-1.5 text-sm font-medium text-sky-400 hover:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 px-4 py-2 rounded-xl transition-colors ml-auto sm:ml-0"
+                        >
+                          View Profile <ChevronRight size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })
               )}
-            </button>
-          )
-        })}
-      </div>
-      
-      {/* Tab Content */}
-      {activeTab === 'friends' && (
-        <div className="space-y-6">
-          {/* Incoming Requests */}
-          {incomingRequests.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-blue-500" />
-                Friend Requests ({incomingRequests.length})
+            </div>
+          </GlassCard>
+        </div>
+
+        {/* ── RIGHT COLUMN ── */}
+        <div className="flex flex-col gap-5">
+
+          {/* Leaderboard */}
+          <GlassCard className="!p-0 overflow-hidden">
+            <div className="p-5 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
+              <h3 className="font-semibold text-slate-50 flex items-center gap-2">
+                <Award size={18} className="text-amber-400" />
+                Leaderboard
               </h3>
-              <div className="space-y-2">
-                {incomingRequests.map(request => (
-                  <FriendRequestCard 
-                    key={request.id} 
-                    request={request}
-                    onAccept={() => acceptFriendRequest(request.id)}
-                    onReject={() => rejectFriendRequest(request.id)}
-                  />
-                ))}
+              <div className="flex p-1 bg-white/[0.03] rounded-lg border border-white/5">
+                <button
+                  onClick={() => setLeaderboardPeriod('weekly')}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                    leaderboardPeriod === 'weekly'
+                      ? 'bg-white/10 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Weekly
+                </button>
+                <button
+                  onClick={() => setLeaderboardPeriod('all-time')}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                    leaderboardPeriod === 'all-time'
+                      ? 'bg-white/10 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  All Time
+                </button>
               </div>
             </div>
-          )}
-          
-          {/* Outgoing Requests */}
-          {outgoingRequests.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-yellow-500" />
-                Pending Requests ({outgoingRequests.length})
-              </h3>
-              <div className="space-y-2">
-                {outgoingRequests.map(request => (
-                  <div 
-                    key={request.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
-                        {request.profile.avatar_url ? (
-                          <img 
-                            src={request.profile.avatar_url} 
-                            alt="" 
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
+            <div className="flex flex-col p-4 gap-2">
+              {leaderboard.length === 0 ? (
+                <div className="text-center py-8">
+                  <Award className="w-10 h-10 text-slate-700 mx-auto mb-2" />
+                  <p className="text-slate-500 text-sm">No data yet</p>
+                </div>
+              ) : (
+                leaderboard.map((entry, idx) => {
+                  const name = entry.display_name || entry.username
+                  const initial = name.charAt(0).toUpperCase()
+                  const color = getAvatarColor(name)
+
+                  return (
+                    <div
+                      key={entry.user_id}
+                      className={`flex items-center gap-4 p-3 rounded-xl transition-all ${
+                        entry.is_current_user
+                          ? 'bg-sky-500/10 border border-sky-500/20'
+                          : 'bg-white/[0.015] border border-transparent hover:bg-white/[0.03]'
+                      }`}
+                    >
+                      <div className={`w-6 text-center font-bold text-sm ${
+                        idx === 0 ? 'text-amber-400' : idx === 1 ? 'text-slate-300' : idx === 2 ? 'text-amber-700' : 'text-slate-500'
+                      }`}>
+                        {entry.rank}
+                      </div>
+                      <div className={`w-8 h-8 rounded-[10px] flex items-center justify-center text-xs font-bold text-white shadow-inner ${color}`}>
+                        {entry.avatar_url ? (
+                          <img src={entry.avatar_url} alt="" className="w-8 h-8 rounded-[10px] object-cover" />
                         ) : (
-                          <Users className="w-5 h-5 text-gray-500" />
+                          initial
                         )}
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          {request.profile.display_name || request.profile.username}
-                        </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          @{request.profile.username}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-sm text-yellow-600 dark:text-yellow-400">
-                      Pending...
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {/* Friends List */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-              <Users className="w-5 h-5 text-green-500" />
-              Your Friends ({friends.length})
-            </h3>
-            
-            {friends.length === 0 ? (
-              <div className="text-center py-8">
-                <Users className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                <p className="text-gray-500 dark:text-gray-400">
-                  No friends yet. Add some friends to get started!
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {friends.map(friend => {
-                  const status = studyingStatus.find(s => s.user_id === friend.id)
-                  return (
-                    <FriendCard 
-                      key={friend.id} 
-                      friend={friend}
-                      onRemove={() => removeFriend(friend.friendship_id)}
-                      onViewPapers={() => handleViewPapers(friend)}
-                      studyingInfo={status}
-                    />
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-      
-      {activeTab === 'activity' && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-900 dark:text-white">
-              Recent Activity
-            </h3>
-            <button
-              onClick={handleRefreshActivity}
-              disabled={isRefreshing}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              title="Refresh activity"
-            >
-              <RefreshCw className={`w-5 h-5 text-gray-500 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-          
-          {activities.length === 0 ? (
-            <div className="text-center py-8">
-              <Activity className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-500 dark:text-gray-400">
-                No recent activity from friends
-              </p>
-              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-                Activity from the last 7 days will appear here
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {activities.map(activity => (
-                <div 
-                  key={activity.id}
-                  className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
-                >
-                  <div className="w-10 h-10 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center flex-shrink-0">
-                    {activity.avatar_url ? (
-                      <img 
-                        src={activity.avatar_url} 
-                        alt="" 
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      <Users className="w-5 h-5 text-gray-500" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        {activity.display_name || activity.username}
-                      </span>
-                      <span className="text-gray-500 dark:text-gray-400 text-sm">
-                        studied for {formatDuration(activity.duration_seconds)}
-                      </span>
-                    </div>
-                    {activity.subject_name && (
-                      <div className="flex items-center gap-2 mt-1">
-                        <span 
-                          className="w-3 h-3 rounded-full" 
-                          style={{ backgroundColor: activity.subject_color || '#6B7280' }}
-                        />
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
-                          {activity.subject_name}
+                      <div className="flex-1 flex justify-between items-center">
+                        <span className="text-sm font-semibold text-slate-200">
+                          {entry.is_current_user ? 'You' : name}
+                        </span>
+                        <span className={`text-sm font-bold ${entry.is_current_user ? 'text-sky-400' : 'text-slate-300'}`}>
+                          {formatDuration(entry.total_seconds)}
                         </span>
                       </div>
-                    )}
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                      {formatTimeAgo(activity.ended_at)}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                    </div>
+                  )
+                })
+              )}
             </div>
-          )}
+          </GlassCard>
+
+          {/* Live Pulse */}
+          <GlassCard className="!p-0 overflow-hidden">
+            <div className="p-5 border-b border-white/5 bg-white/[0.01]">
+              <h3 className="font-semibold text-slate-50 flex items-center gap-2">
+                <Sparkles size={18} className="text-purple-400" />
+                Live Pulse
+              </h3>
+            </div>
+            <div className="flex flex-col p-4 gap-3">
+              {activities.length === 0 ? (
+                <div className="text-center py-8">
+                  <Activity className="w-10 h-10 text-slate-700 mx-auto mb-2" />
+                  <p className="text-slate-500 text-sm">No recent activity</p>
+                </div>
+              ) : (
+                activities.slice(0, 5).map(activity => {
+                  const name = activity.display_name || activity.username
+                  const initial = name.charAt(0).toUpperCase()
+                  const color = getAvatarColor(name)
+
+                  return (
+                    <div key={activity.id} className="flex items-start gap-3">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-inner shrink-0 ${color}`}>
+                        {activity.avatar_url ? (
+                          <img src={activity.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover" />
+                        ) : (
+                          initial
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-0.5 min-w-0">
+                        <p className="text-sm text-slate-300 leading-snug">
+                          <span className="font-bold text-white">{name}</span>
+                          {' '}studied{' '}
+                          {activity.subject_name && (
+                            <span className="text-slate-200 font-medium">{activity.subject_name}</span>
+                          )}
+                          {' '}for {formatDuration(activity.duration_seconds)}.
+                        </p>
+                        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+                          {formatTimeAgo(activity.ended_at)}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </GlassCard>
+        </div>
+      </div>
+
+      {/* ── Requests Modal ── */}
+      {showRequestsModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#09090b]/80 backdrop-blur-md transition-opacity">
+          <div className="w-full max-w-lg bg-[#09090b] border border-white/10 rounded-[24px] shadow-2xl overflow-hidden flex flex-col animate-fade-slide max-h-[90vh]">
+            <div className="flex justify-between items-center p-6">
+              <h3 className="text-xl font-bold text-white">Manage Requests</h3>
+              <button
+                onClick={() => setShowRequestsModal(false)}
+                className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto px-6 pb-6 space-y-6">
+              {/* Incoming */}
+              {incomingRequests.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-[0.7rem] font-semibold text-slate-500 uppercase tracking-[0.15em]">
+                    Incoming ({incomingRequests.length})
+                  </p>
+                  {incomingRequests.map(request => (
+                    <RequestCard
+                      key={request.id}
+                      request={request}
+                      type="incoming"
+                      onAccept={() => acceptFriendRequest(request.id)}
+                      onReject={() => rejectFriendRequest(request.id)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Outgoing */}
+              {outgoingRequests.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-[0.7rem] font-semibold text-slate-500 uppercase tracking-[0.15em]">
+                    Pending ({outgoingRequests.length})
+                  </p>
+                  {outgoingRequests.map(request => (
+                    <RequestCard
+                      key={request.id}
+                      request={request}
+                      type="outgoing"
+                    />
+                  ))}
+                </div>
+              )}
+
+              {incomingRequests.length === 0 && outgoingRequests.length === 0 && (
+                <div className="text-center py-12">
+                  <Bell className="w-10 h-10 text-slate-700 mx-auto mb-2" />
+                  <p className="text-slate-500 text-sm">No pending requests</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
-      
-      {activeTab === 'leaderboard' && (
-        <div className="space-y-4">
-          {/* Period Toggle */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setLeaderboardPeriod('weekly')}
-              className={`
-                px-4 py-2 rounded-lg font-medium transition-colors
-                ${leaderboardPeriod === 'weekly'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }
-              `}
-            >
-              This Week
-            </button>
-            <button
-              onClick={() => setLeaderboardPeriod('all-time')}
-              className={`
-                px-4 py-2 rounded-lg font-medium transition-colors
-                ${leaderboardPeriod === 'all-time'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }
-              `}
-            >
-              All Time
-            </button>
-          </div>
-          
-          {/* Leaderboard */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-            {leaderboard.length === 0 ? (
-              <div className="text-center py-8">
-                <Trophy className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                <p className="text-gray-500 dark:text-gray-400">
-                  No data yet. Start studying to appear on the leaderboard!
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {leaderboard.map((entry) => (
-                  <div 
-                    key={entry.user_id}
-                    className={`
-                      flex items-center gap-4 p-4
-                      ${entry.is_current_user ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
-                    `}
-                  >
-                    {/* Rank */}
-                    <div className={`
-                      w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm
-                      ${entry.rank === 1 ? 'bg-yellow-400 text-yellow-900' : ''}
-                      ${entry.rank === 2 ? 'bg-gray-300 text-gray-700' : ''}
-                      ${entry.rank === 3 ? 'bg-amber-600 text-amber-100' : ''}
-                      ${entry.rank > 3 ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' : ''}
-                    `}>
-                      {entry.rank}
-                    </div>
-                    
-                    {/* Avatar */}
-                    <div className="w-10 h-10 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
-                      {entry.avatar_url ? (
-                        <img 
-                          src={entry.avatar_url} 
-                          alt="" 
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <Users className="w-5 h-5 text-gray-500" />
-                      )}
-                    </div>
-                    
-                    {/* Name */}
-                    <div className="flex-1">
-                      <p className={`font-medium ${entry.is_current_user ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-white'}`}>
-                        {entry.display_name || entry.username}
-                        {entry.is_current_user && ' (You)'}
-                      </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        @{entry.username}
-                      </p>
-                    </div>
-                    
-                    {/* Time */}
-                    <div className="text-right">
-                      <p className="font-semibold text-gray-900 dark:text-white">
-                        {formatDuration(entry.total_seconds)}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        total time
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-      
-      {/* Modals */}
+
+      {/* ── Modals ── */}
       {showAddFriend && (
         <AddFriendModal onClose={() => setShowAddFriend(false)} />
       )}
-      
+
       {showFriendPapers && selectedFriend && (
-        <FriendPapersModal 
-          friend={selectedFriend} 
+        <FriendPapersModal
+          friend={selectedFriend}
           onClose={() => {
             setShowFriendPapers(false)
             setSelectedFriend(null)
-          }} 
+          }}
         />
       )}
     </div>
   )
 }
 
-// Friend Request Card Component
-function FriendRequestCard({ 
-  request, 
-  onAccept, 
-  onReject 
-}: { 
+// ── Request Card ──
+function RequestCard({
+  request,
+  type,
+  onAccept,
+  onReject,
+}: {
   request: FriendRequest
-  onAccept: () => void
-  onReject: () => void 
+  type: 'incoming' | 'outgoing'
+  onAccept?: () => void
+  onReject?: () => void
 }) {
-  return (
-    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
-          {request.profile.avatar_url ? (
-            <img 
-              src={request.profile.avatar_url} 
-              alt="" 
-              className="w-10 h-10 rounded-full object-cover"
-            />
-          ) : (
-            <Users className="w-5 h-5 text-gray-500" />
-          )}
-        </div>
-        <div>
-          <p className="font-medium text-gray-900 dark:text-white">
-            {request.profile.display_name || request.profile.username}
-          </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            @{request.profile.username}
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <button
-          onClick={onAccept}
-          className="p-2 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
-        >
-          <Check className="w-5 h-5" />
-        </button>
-        <button
-          onClick={onReject}
-          className="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
-    </div>
-  )
-}
+  const name = request.profile.display_name || request.profile.username
+  const initial = name.charAt(0).toUpperCase()
+  const color = getAvatarColor(name)
 
-// Friend Card Component
-function FriendCard({ 
-  friend, 
-  onRemove,
-  onViewPapers,
-  studyingInfo
-}: { 
-  friend: Friend
-  onRemove: () => void
-  onViewPapers: () => void
-  studyingInfo?: { is_studying: boolean; subject_name: string | null; subject_color: string | null; started_at: string | null }
-}) {
-  const [showMenu, setShowMenu] = useState(false)
-  
-  const formatStudyingTime = (startedAt: string): string => {
-    const started = new Date(startedAt)
-    const now = new Date()
-    const diffMs = now.getTime() - started.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    
-    if (diffMins < 1) return 'just started'
-    if (diffMins < 60) return `for ${diffMins}m`
-    const diffHours = Math.floor(diffMins / 60)
-    return `for ${diffHours}h ${diffMins % 60}m`
-  }
-  
   return (
-    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+    <div className="flex items-center justify-between p-3.5 bg-white/[0.02] border border-white/[0.06] rounded-xl">
       <div className="flex items-center gap-3">
-        <div className="relative">
-          <div className="w-10 h-10 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
-            {friend.avatar_url ? (
-              <img 
-                src={friend.avatar_url} 
-                alt="" 
-                className="w-10 h-10 rounded-full object-cover"
-              />
-            ) : (
-              <Users className="w-5 h-5 text-gray-500" />
-            )}
-          </div>
-          {studyingInfo?.is_studying && (
-            <div 
-              className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-white dark:border-gray-700 flex items-center justify-center"
-              style={{ backgroundColor: studyingInfo.subject_color || '#22c55e' }}
-              title={`Studying ${studyingInfo.subject_name || 'Unknown'}`}
-            >
-              <Radio className="w-2.5 h-2.5 text-white animate-pulse" />
-            </div>
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-inner ${color}`}>
+          {request.profile.avatar_url ? (
+            <img src={request.profile.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
+          ) : (
+            initial
           )}
         </div>
         <div>
-          <div className="flex items-center gap-2">
-            <p className="font-medium text-gray-900 dark:text-white">
-              {friend.display_name || friend.username}
-            </p>
-            {studyingInfo?.is_studying && (
-              <span 
-                className="px-2 py-0.5 text-xs font-medium rounded-full text-white"
-                style={{ backgroundColor: studyingInfo.subject_color || '#22c55e' }}
-              >
-                Studying {studyingInfo.subject_name || ''} {studyingInfo.started_at && formatStudyingTime(studyingInfo.started_at)}
-              </span>
-            )}
-          </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            @{friend.username} • {friend.user_code}
-          </p>
+          <p className="text-sm font-semibold text-white">{name}</p>
+          <p className="text-xs text-slate-500">@{request.profile.username}</p>
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        {friend.privacy_papers && (
+      {type === 'incoming' ? (
+        <div className="flex items-center gap-2">
           <button
-            onClick={onViewPapers}
-            className="p-2 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors"
-            title="View Papers"
+            onClick={onAccept}
+            className="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-colors"
           >
-            <FileText className="w-5 h-5" />
+            <Check className="w-4 h-4" />
           </button>
-        )}
-        <div className="relative">
           <button
-            onClick={() => setShowMenu(!showMenu)}
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors"
+            onClick={onReject}
+            className="p-2 bg-rose-500/10 text-rose-400 rounded-lg hover:bg-rose-500/20 transition-colors"
           >
-            <ChevronRight className={`w-5 h-5 transition-transform ${showMenu ? 'rotate-90' : ''}`} />
+            <X className="w-4 h-4" />
           </button>
-          {showMenu && (
-            <>
-              <div 
-                className="fixed inset-0 z-10" 
-                onClick={() => setShowMenu(false)}
-              />
-              <div className="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20">
-                <button
-                  onClick={() => {
-                    setShowMenu(false)
-                    onRemove()
-                  }}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                >
-                  <UserMinus className="w-4 h-4" />
-                  Remove Friend
-                </button>
-              </div>
-            </>
-          )}
         </div>
-      </div>
+      ) : (
+        <span className="text-xs font-semibold text-amber-400/70">Pending...</span>
+      )}
     </div>
   )
 }
