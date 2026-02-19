@@ -129,7 +129,7 @@ export function ArchivePage() {
   return (
     <div className="space-y-5 pb-10 animate-fade-slide">
       {/* Summary Bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
         <p className="text-sm font-medium text-slate-400">
           <span className="text-slate-100 font-bold">{filteredSessions.length}</span> sessions
           {' • '}
@@ -148,9 +148,9 @@ export function ArchivePage() {
 
       {/* Filters Card */}
       <GlassCard className="!p-4">
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3 w-full">
           {/* Search */}
-          <div className="relative flex-1 min-w-[200px]">
+          <div className="relative flex-1 min-w-0 w-full sm:w-auto sm:min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
             <input
               type="text"
@@ -165,7 +165,7 @@ export function ArchivePage() {
           <div className="relative">
             <button
               onClick={() => { setShowDateFilter(!showDateFilter); setShowSubjectFilter(false); setShowTagFilter(false) }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-colors whitespace-nowrap ${
                 dateRange !== 'all'
                   ? 'bg-sky-500/10 border-sky-500/30 text-sky-400'
                   : 'bg-white/[0.03] border-white/10 text-slate-300 hover:bg-white/[0.06]'
@@ -176,7 +176,7 @@ export function ArchivePage() {
               <ChevronDown className="w-4 h-4" />
             </button>
             {showDateFilter && (
-              <div className="absolute top-full left-0 mt-2 w-64 bg-[#0f0f13] border border-white/10 rounded-2xl shadow-2xl z-10 p-2 backdrop-blur-xl">
+              <div className="absolute top-full left-0 sm:left-0 right-0 sm:right-auto mt-2 w-full sm:w-64 bg-[#0f0f13] border border-white/10 rounded-2xl shadow-2xl z-10 p-2 backdrop-blur-xl">
                 {(['all', 'today', 'week', 'month', 'custom'] as DateRange[]).map(range => (
                   <button
                     key={range}
@@ -208,7 +208,7 @@ export function ArchivePage() {
           <div className="relative">
             <button
               onClick={() => { setShowSubjectFilter(!showSubjectFilter); setShowDateFilter(false); setShowTagFilter(false) }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-colors whitespace-nowrap ${
                 selectedSubjectId
                   ? 'bg-sky-500/10 border-sky-500/30 text-sky-400'
                   : 'bg-white/[0.03] border-white/10 text-slate-300 hover:bg-white/[0.06]'
@@ -219,7 +219,7 @@ export function ArchivePage() {
               <ChevronDown className="w-4 h-4" />
             </button>
             {showSubjectFilter && (
-              <div className="absolute top-full left-0 mt-2 w-56 bg-[#0f0f13] border border-white/10 rounded-2xl shadow-2xl z-10 p-2 max-h-64 overflow-y-auto backdrop-blur-xl">
+              <div className="absolute top-full left-0 sm:left-0 right-0 sm:right-auto mt-2 w-full sm:w-56 bg-[#0f0f13] border border-white/10 rounded-2xl shadow-2xl z-10 p-2 max-h-64 overflow-y-auto backdrop-blur-xl">
                 <button onClick={() => { setSelectedSubjectId(null); setShowSubjectFilter(false) }}
                   className={`w-full text-left px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
                     !selectedSubjectId ? 'bg-sky-500/10 text-sky-400' : 'hover:bg-white/[0.05] text-slate-300'
@@ -244,7 +244,7 @@ export function ArchivePage() {
           <div className="relative">
             <button
               onClick={() => { setShowTagFilter(!showTagFilter); setShowDateFilter(false); setShowSubjectFilter(false) }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-colors whitespace-nowrap ${
                 selectedTagId
                   ? 'bg-sky-500/10 border-sky-500/30 text-sky-400'
                   : 'bg-white/[0.03] border-white/10 text-slate-300 hover:bg-white/[0.06]'
@@ -255,7 +255,7 @@ export function ArchivePage() {
               <ChevronDown className="w-4 h-4" />
             </button>
             {showTagFilter && (
-              <div className="absolute top-full left-0 mt-2 w-48 bg-[#0f0f13] border border-white/10 rounded-2xl shadow-2xl z-10 p-2 backdrop-blur-xl">
+              <div className="absolute top-full left-0 sm:left-0 right-0 sm:right-auto mt-2 w-full sm:w-48 bg-[#0f0f13] border border-white/10 rounded-2xl shadow-2xl z-10 p-2 backdrop-blur-xl">
                 <button onClick={() => { setSelectedTagId(null); setShowTagFilter(false) }}
                   className={`w-full text-left px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
                     !selectedTagId ? 'bg-sky-500/10 text-sky-400' : 'hover:bg-white/[0.05] text-slate-300'
@@ -299,7 +299,7 @@ export function ArchivePage() {
               </div>
               <GlassCard className="!p-0 overflow-hidden divide-y divide-white/[0.04]">
                 {daySessions.map(session => (
-                  <div key={session.id} className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
+                  <div key={session.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-white/[0.02] transition-colors">
                     <div className="flex items-center gap-4">
                       <div className="w-1 h-12 rounded-full" style={{ backgroundColor: session.subject?.color || '#4B5563' }} />
                       <div className="flex flex-col gap-0.5">

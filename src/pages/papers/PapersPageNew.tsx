@@ -90,14 +90,14 @@ export function PapersPage() {
       {selectedConfig ? (
         <div className="flex flex-col gap-6">
           {/* 2. Main Hero Card */}
-          <GlassCard className="!p-8 bg-gradient-to-br from-sky-500/[0.02] to-transparent">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <GlassCard className="!p-5 md:!p-8 bg-gradient-to-br from-sky-500/[0.02] to-transparent">
+            <div className="flex flex-col gap-5 md:gap-6">
               <div className="flex items-center gap-5">
                 <div className="w-14 h-14 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 shadow-inner">
                   <BookOpen size={26} />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <h2 className="text-[1.75rem] font-bold text-white tracking-tight">
+                  <h2 className="text-[1.25rem] md:text-[1.75rem] font-bold text-white tracking-tight">
                     {selectedConfig.subject_name}
                     {subjectCode && <span className="text-slate-400 font-semibold"> ({subjectCode})</span>}
                   </h2>
@@ -117,11 +117,11 @@ export function PapersPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-3">
                 {stats && stats.averagePercentage > 0 && (
-                  <div className="hidden md:block text-right px-5 border-r border-white/10">
+                  <div className="text-right px-5 border-r border-white/10">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-0.5">Avg Score</p>
-                    <p className="text-[1.75rem] font-bold text-emerald-400 tracking-tight">{stats.averagePercentage.toFixed(1)}%</p>
+                    <p className="text-[1.25rem] md:text-[1.75rem] font-bold text-emerald-400 tracking-tight">{stats.averagePercentage.toFixed(1)}%</p>
                   </div>
                 )}
                 

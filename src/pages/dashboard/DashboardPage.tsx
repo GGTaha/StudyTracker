@@ -80,11 +80,11 @@ function TimerAndActivitySection() {
     <GlassCard>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         {/* Compact Timer */}
-        <div className="flex items-center gap-4 bg-black/20 px-5 py-2.5 rounded-full border border-white/5">
-          <span className={`font-mono text-2xl font-semibold tracking-tight w-[120px] ${isPaused ? 'animate-pulse text-amber-400' : ''}`}>
+        <div className="flex items-center gap-3 md:gap-4 bg-black/20 px-4 md:px-5 py-2.5 rounded-full border border-white/5 overflow-x-auto">
+          <span className={`font-mono text-lg md:text-2xl font-semibold tracking-tight shrink-0 ${isPaused ? 'animate-pulse text-amber-400' : ''}`}>
             {formatTimer(elapsedSeconds)}
           </span>
-          <div className="flex gap-2">
+          <div className="flex gap-2 shrink-0">
             <button
               onClick={() => {
                 if (isPaused) {
@@ -95,7 +95,7 @@ function TimerAndActivitySection() {
                   navigate('/timer?autostart=1')
                 }
               }}
-              className={`flex items-center gap-2 px-4 py-1.5 rounded-full font-semibold transition-all duration-300 ${
+              className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 rounded-full font-semibold text-sm md:text-base transition-all duration-300 whitespace-nowrap ${
                 !isRunning && !isPaused
                   ? 'bg-sky-400 text-slate-900 hover:bg-sky-300 hover:scale-105 shadow-[0_0_15px_rgba(56,189,248,0.3)]'
                   : 'bg-white/10 text-white hover:bg-white/20'
@@ -110,7 +110,7 @@ function TimerAndActivitySection() {
                 onClick={() => {
                   stopTimer()
                 }}
-                className="flex items-center gap-2 px-4 py-1.5 rounded-full font-semibold transition-all duration-300 bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/20"
+                className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 rounded-full font-semibold text-sm md:text-base transition-all duration-300 whitespace-nowrap bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/20"
               >
                 Log Session
               </button>
@@ -394,8 +394,8 @@ export function DashboardPage() {
     <div className="flex flex-col gap-6">
       {/* Greeting */}
       <div>
-        <h1 className="text-[2.25rem] font-semibold mb-2 tracking-tight">Welcome back, {profile?.display_name || 'Student'}! 👋</h1>
-        <p className="text-slate-400 text-[1.05rem]">Ready to continue your study journey? Let's make today productive.</p>
+        <h1 className="text-[1.5rem] md:text-[2.25rem] font-semibold mb-1 md:mb-2 tracking-tight">Welcome back, {profile?.display_name || 'Student'}! 👋</h1>
+        <p className="text-slate-400 text-sm md:text-[1.05rem]">Ready to continue your study journey? Let's make today productive.</p>
       </div>
 
       {/* Top Stats Row */}

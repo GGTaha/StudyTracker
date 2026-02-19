@@ -122,7 +122,7 @@ export function TimerPage() {
     <div className="flex flex-col gap-5 pb-10">
       
       {/* Timer Hero */}
-      <div className={`relative flex flex-col items-center justify-center py-16 px-6 rounded-[32px] border border-white/[0.04] transition-colors duration-500 ${
+      <div className={`relative flex flex-col items-center justify-center py-10 md:py-16 px-4 md:px-6 rounded-[24px] md:rounded-[32px] border border-white/[0.04] transition-colors duration-500 ${
         timerStatus === 'paused' ? 'bg-gradient-to-b from-amber-500/[0.03] to-transparent' : 'bg-gradient-to-b from-sky-500/[0.03] to-transparent'
       }`}>
         {timerStatus !== 'idle' && (
@@ -153,19 +153,19 @@ export function TimerPage() {
         </div>
 
         {/* Big Timer Display */}
-        <div className="font-mono text-[6rem] md:text-[8rem] font-bold tracking-tighter text-slate-50 drop-shadow-[0_0_20px_rgba(255,255,255,0.1)] leading-none mb-10 z-10">
+        <div className="font-mono text-[3.5rem] sm:text-[6rem] md:text-[8rem] font-bold tracking-tighter text-slate-50 drop-shadow-[0_0_20px_rgba(255,255,255,0.1)] leading-none mb-8 md:mb-10 z-10">
           {formatTimer(elapsedSeconds)}
         </div>
         
         {/* Controls */}
-        <div className="flex gap-4 z-10">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 z-10 w-full sm:w-auto px-4 sm:px-0">
           <button 
             onClick={() => {
               if (timerStatus === 'running') pauseTimer()
               else if (timerStatus === 'paused') resumeTimer()
               else startTimer()
             }} 
-            className={`flex items-center gap-2.5 px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 ${
+            className={`flex items-center justify-center gap-2.5 px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-semibold text-base sm:text-lg transition-all duration-300 ${
               timerStatus === 'running' 
                 ? 'bg-white/5 text-white hover:bg-white/10 border border-white/10' 
                 : timerStatus === 'paused' 
@@ -179,7 +179,7 @@ export function TimerPage() {
           {timerStatus !== 'idle' && (
             <button 
               onClick={() => stopTimer()} 
-              className="flex items-center gap-2 px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20"
+              className="flex items-center justify-center gap-2 px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-semibold text-base sm:text-lg transition-all duration-300 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20"
             >
               Log & Save
             </button>
@@ -238,7 +238,7 @@ export function TimerPage() {
         </div>
 
         {/* Right Column: Sessions — capped to match left column height */}
-        <div className="flex flex-col overflow-hidden max-h-[420px]">
+        <div className="flex flex-col overflow-hidden max-h-[350px] md:max-h-[420px]">
           <GlassCard className="!p-0 overflow-hidden flex flex-col flex-1">
             <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/[0.01] shrink-0 z-10">
               <h3 className="text-[1.05rem] font-semibold text-slate-50 flex items-center gap-2">

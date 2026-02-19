@@ -54,10 +54,10 @@ export function PapersTable({ configId, onAddEntry }: PapersTableProps) {
   const gridCols = `2fr ${paperConfigs.map(() => '1fr').join(' ')} 1fr 1fr`
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto -mx-2 px-2">
       {/* Table Header */}
       <div
-        className="grid px-5 py-2 text-[0.8rem] font-semibold tracking-wider text-slate-500 uppercase"
+        className="grid px-5 py-2 text-[0.8rem] font-semibold tracking-wider text-slate-500 uppercase min-w-[500px]"
         style={{ gridTemplateColumns: gridCols }}
       >
         <div>Session</div>
@@ -73,7 +73,7 @@ export function PapersTable({ configId, onAddEntry }: PapersTableProps) {
         {rows.map((row) => (
           <div
             key={`${row.year}-${row.session}-${row.variant}`}
-            className="group grid items-center p-4 bg-white/[0.015] border border-white/[0.04] rounded-2xl hover:bg-white/[0.04] hover:border-white/10 transition-colors"
+            className="group grid items-center p-4 bg-white/[0.015] border border-white/[0.04] rounded-2xl hover:bg-white/[0.04] hover:border-white/10 transition-colors min-w-[500px]"
             style={{ gridTemplateColumns: gridCols }}
           >
             {/* Session */}

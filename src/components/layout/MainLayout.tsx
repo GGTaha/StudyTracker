@@ -35,12 +35,12 @@ export function MainLayout() {
       <div className="fixed top-[-10%] left-[-5%] w-[500px] h-[500px] bg-purple-900 rounded-full mix-blend-multiply filter blur-[120px] opacity-30 z-0 animate-pulse pointer-events-none"></div>
       <div className="fixed bottom-[-10%] right-[-5%] w-[600px] h-[600px] bg-sky-900 rounded-full mix-blend-multiply filter blur-[120px] opacity-30 z-0 pointer-events-none"></div>
       <Sidebar />
-      <main className="flex-1 p-4 md:p-6 overflow-y-auto z-10 w-full">
+      <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6 overflow-y-auto z-10 w-full">
         {showHeader && (
           <header className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
             <div>
-              <h1 className="text-[2.25rem] font-semibold mb-2 tracking-tight">{pageCfg.title}</h1>
-              <p className="text-slate-400 text-[1.05rem]">{pageCfg.subtitle}</p>
+              <h1 className="text-[1.5rem] md:text-[2.25rem] font-semibold mb-1 md:mb-2 tracking-tight">{pageCfg.title}</h1>
+              <p className="text-slate-400 text-sm md:text-[1.05rem]">{pageCfg.subtitle}</p>
             </div>
             <div className="flex items-center gap-4">
               <div className="relative" ref={dropdownRef}>
