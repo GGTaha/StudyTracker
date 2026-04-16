@@ -39,6 +39,7 @@ StudyTracker is a study management application designed for A-Level students (pa
 | **Vite** | Build tool & dev server |
 | **TailwindCSS 4** | Styling |
 | **Zustand** | State management |
+| **Recharts** | Data visualization & charting |
 | **Supabase** | Backend (Auth + PostgreSQL database) |
 | **React Router** | Client-side routing |
 | **Lucide React** | Icons |
@@ -51,7 +52,8 @@ StudyTracker is a study management application designed for A-Level students (pa
   "zustand": "^5.0.5",
   "@supabase/supabase-js": "^2.50.1",
   "tailwindcss": "^4.1.8",
-  "react-router-dom": "^7.6.1"
+  "react-router-dom": "^7.6.1",
+  "recharts": "^2.15.0"
 }
 ```
 
@@ -359,8 +361,15 @@ Manages friends, activity, leaderboards.
 
 #### Entries Table
 - Rows grouped by: `Year + Session + Variant`
+- Features dynamic column sorting and dropdowns mapping individual "Date Added" timestamps.
 - Each row shows: Session label (e.g., "Summer 2026 V1"), marks for each paper, total, percentage
-- Session types: Summer (May/Jun), Spring (Feb/Mar), Winter (Oct/Nov)
+- Percentages map dynamically specifically to the papers uniquely logged in that session.
+
+#### Analytics Graph (`PaperProgressGraph`)
+- Interactive graphing interface powered by `recharts`.
+- Dynamically resolves blank-states by defaulting to the user's most-handled metric structure.
+- X-Axis maps strictly sequentially, falling back to aggregate `latestDate` chronology ties instead of raw-arrays.
+- Offers Y-Axis mapping for Individual Paper marks, Partial/Full Percentages, and Raw Aggregates.
 
 #### Paper Code Format
 - `paper_code` = `{paper}{variant}`
@@ -392,6 +401,12 @@ Three tabs:
 - Ranked by total study time
 - Shows your position highlighted
 
+#### Progress Comparison Widget
+- Custom analytics graphical block pinned to the bottom.
+- Selectively compares data trajectories exclusively across *Shared Subjects*.
+- Visualizes competitive metrics mapping user arrays against `friendEntries`.
+- Built-in UI toggle dynamically swaps the render engine between competitive `Bar Chart` vs trajectory `Line Chart`.
+
 ### 7. Settings Page (`/settings`)
 - Profile settings (display name, username)
 - Privacy toggles:
@@ -419,15 +434,17 @@ Three tabs:
 - Control buttons
 
 ### Papers Components
-- `PapersTable` - Main table with entries
+- `PapersTable` - Main table with scalable sortable columns
+- `PaperProgressGraph` - Interactive `recharts` timeline graph mapping progression trajectory
 - `AddEntryModal` - Add new paper entry
 - `AddSubjectModal` - Add new subject config
 - `EditConfigModal` - Edit paper config (max marks)
-- `CompareFriendsModal` - Friend comparison view
+- `CompareFriendsModal` - Deep mathematical table comparison view
 
 ### Friends Components
 - `AddFriendModal` - Search and add friends
 - `FriendPapersModal` - View friend's papers
+- `FriendComparisonWidget` - Dual-node multi-state competitive visualization graph
 
 ---
 

@@ -9,6 +9,7 @@ import { AddEntryModal } from '../../components/papers/AddEntryModal'
 import { AddSubjectModal } from '../../components/papers/AddSubjectModal'
 import { EditConfigModal } from '../../components/papers/EditConfigModal'
 import { CompareFriendsModal } from '../../components/papers/CompareFriendsModal'
+import { PaperProgressGraph } from '../../components/papers/PaperProgressGraph'
 
 export function PapersPage() {
   const { 
@@ -165,6 +166,9 @@ export function PapersPage() {
               />
             </div>
           </GlassCard>
+
+          {/* 4. Progress Graph */}
+          <PaperProgressGraph key={selectedConfigId} configId={selectedConfigId!} />
         </div>
       ) : (
         /* Empty State */

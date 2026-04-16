@@ -40,6 +40,8 @@ export interface SessionRow {
   variant: number // 1, 2, 3 etc
   sessionLabel: string
   papers: Map<string, PaperEntry | null> // paper number -> entry
+  paperDates: Map<string, string | null> // paper number -> created_at
+  latestDate: string | null
   total: number | null
   percentage: number | null
   maxTotal: number
@@ -328,6 +330,8 @@ export const usePapersStore = create<PapersState>((set, get) => ({
     // Convert to rows
     const rows: SessionRow[] = Array.from(groupedMap.values()).map(group => {
       const papersMap = new Map<string, PaperEntry | null>()
+      const paperDates = new Map<string, string | null>()
+      let latestDate: string | null = null
       
       // For each configured paper, find matching entry with same variant
       paperConfigs.forEach(pc => {
@@ -337,6 +341,13 @@ export const usePapersStore = create<PapersState>((set, get) => ({
           return paperNum === pc.paper && variant === group.variant
         }) || null
         papersMap.set(pc.paper, entry)
+        paperDates.set(pc.paper, entry?.created_at || null)
+        
+        if (entry?.created_at) {
+          if (!latestDate || new Date(entry.created_at) > new Date(latestDate)) {
+            latestDate = entry.created_at
+          }
+        }
       })
 
       // Calculate total and percentage
@@ -366,6 +377,8 @@ export const usePapersStore = create<PapersState>((set, get) => ({
         variant: group.variant,
         sessionLabel: `${getSessionLabel(group.year, group.session)} V${group.variant}`,
         papers: papersMap,
+        paperDates,
+        latestDate,
         total,
         percentage,
         maxTotal,

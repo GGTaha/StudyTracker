@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { AddFriendModal } from '../../components/friends/AddFriendModal'
 import { FriendPapersModal } from '../../components/friends/FriendPapersModal'
+import { FriendComparisonWidget } from '../../components/friends/FriendComparisonWidget'
 
 // ── Avatar color palette ──
 const AVATAR_COLORS = [
@@ -398,6 +399,9 @@ export function FriendsPage() {
           </GlassCard>
         </div>
       </div>
+
+      {/* ── Comparison Widget ── */}
+      <FriendComparisonWidget />
 
       {/* ── Requests Modal ── */}
       {showRequestsModal && (
