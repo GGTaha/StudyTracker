@@ -212,7 +212,7 @@ export function FriendComparisonWidget() {
       }}
       labelStyle={{ color: '#94a3b8', marginBottom: '6px', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}
       cursor={{ fill: 'rgba(255, 255, 255, 0.05)', stroke: 'rgba(255, 255, 255, 0.05)', strokeWidth: 32 }}
-      formatter={(value: any, name: any, props: any) => {
+      formatter={(value: any, _name: any, props: any) => {
          const isPercent = metricMode === 'combined_percent' && value !== undefined
          return [`${value}${isPercent ? '%' : ''}`, props.dataKey === 'myValue' ? 'You' : friendName]
       }}
